@@ -184,6 +184,9 @@ GET http://localhost:8080/api/purchase-orders/1
 ### Get all purchase items
 GET http://localhost:8080/api/purchase-items
 
+### Delete Purchase Item
+DELETE http://localhost:8080/api/purchase-items/1
+
 ### Create Purchase Item
 POST http://localhost:8080/api/purchase-items
 Content-Type: application/json
@@ -207,6 +210,9 @@ GET http://localhost:8080/api/purchase-items/1
 ### Get all sales orders
 GET http://localhost:8080/api/sales-orders
 
+### Delete Sales Order
+DELETE http://localhost:8080/api/sales-orders/
+
 ### Create Sales Order
 POST http://localhost:8080/api/sales-orders
 Content-Type: application/json
@@ -228,6 +234,9 @@ GET http://localhost:8080/api/sales-orders/1
 ### Get all sales items
 GET http://localhost:8080/api/sales-items
 
+### Delete Sales Item
+DELETE http://localhost:8080/api/sales-items/1
+
 ### Create Sales Item
 POST http://localhost:8080/api/sales-items
 Content-Type: application/json
@@ -239,9 +248,9 @@ Content-Type: application/json
   "product": {
     "id": 1
   },
-  "quantity": 2,
+  "quantity": 3,
   "unitPrice": 240.00,
-  "subtotal": 480.00
+  "subtotal": 720.00
 }
 
 ### Get sales item with ID 1

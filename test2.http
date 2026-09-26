@@ -1,0 +1,15 @@
+### Invalid Product
+POST http://localhost:8080/api/products
+Content-Type: application/json
+
+{
+  "sku": "",
+  "name": "",
+  "unitCost": -100,
+  "sellingPrice": -200,
+  "reorderLevel": -5,
+  "status": "ACTIVE",
+  "category": {
+    "id": 1
+  }
+}

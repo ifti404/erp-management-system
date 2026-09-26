@@ -1,6 +1,12 @@
 package com.ifti.erp.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -11,24 +17,37 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "SKU is required")
+    @Size(max = 45, message = "SKU must not exceed 45 characters")
     @Column(nullable = false, length = 45)
     private String sku;
 
+    @NotBlank(message = "Product name is required")
+    @Size(max = 100, message = "Product name must not exceed 100 characters")
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Size(max = 255, message = "Description must not exceed 255 characters")
     @Column(length = 255)
     private String description;
 
-    @Column(name = "unit_cost", nullable = false, precision = 12, scale = 2)
+    @NotNull(message = "Unit cost is required")
+    @DecimalMin(value = "0.0", message = "Unit cost cannot be negative")
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal unitCost;
 
-    @Column(name = "selling_price", nullable = false, precision = 12, scale = 2)
+    @NotNull(message = "Selling price is required")
+    @DecimalMin(value = "0.0", message = "Selling price cannot be negative")
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal sellingPrice;
 
-    @Column(name = "reorder_level", nullable = false)
+    @NotNull(message = "Reorder level is required")
+    @Min(value = 0, message = "Reorder level cannot be negative")
+    @Column(nullable = false)
     private Integer reorderLevel;
 
+    @NotBlank(message = "Status is required")
+    @Size(max = 20, message = "Status must not exceed 20 characters")
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -45,6 +64,10 @@ public class Product {
 
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getSku() {

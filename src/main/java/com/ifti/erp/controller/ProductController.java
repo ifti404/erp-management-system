@@ -4,6 +4,7 @@ import com.ifti.erp.entity.Product;
 import com.ifti.erp.service.ProductService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -30,14 +31,14 @@ public class ProductController {
     }
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product) {
+    public Product createProduct(@Valid @RequestBody Product product) {
         return productService.createProduct(product);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Product> updateProduct(
             @PathVariable Long id,
-            @RequestBody Product productDetails) {
+            @Valid @RequestBody Product productDetails) {
 
         try {
             return ResponseEntity.ok(
