@@ -156,3 +156,49 @@ Content-Type: application/json
 
 ### Get inventory with ID 1
 GET http://localhost:8080/api/inventory/1
+
+
+
+### Get all purchase orders
+GET http://localhost:8080/api/purchase-orders
+
+### Create Purchase Order
+POST http://localhost:8080/api/purchase-orders
+Content-Type: application/json
+
+{
+  "supplier": {
+    "id": 1
+  },
+  "orderDate": "2026-09-26T19:30:00",
+  "status": "PENDING",
+  "totalAmount": 1100.00,
+  "notes": "Initial stock purchase"
+}
+
+### Get purchase order with ID 1
+GET http://localhost:8080/api/purchase-orders/1
+
+
+
+### Get all purchase items
+GET http://localhost:8080/api/purchase-items
+
+### Create Purchase Item
+POST http://localhost:8080/api/purchase-items
+Content-Type: application/json
+
+{
+  "purchaseOrder": {
+    "id": 1
+  },
+  "product": {
+    "id": 1
+  },
+  "quantity": 10,
+  "unitCost": 110.00,
+  "subtotal": 1100.00
+}
+
+### Get purchase item with ID 1
+GET http://localhost:8080/api/purchase-items/1
