@@ -1,0 +1,158 @@
+### Get all roles
+GET http://localhost:8080/api/roles
+
+### Create Admin role
+POST http://localhost:8080/api/roles
+Content-Type: application/json
+
+{
+  "name": "Admin"
+}
+
+### Create Manager role
+POST http://localhost:8080/api/roles
+Content-Type: application/json
+
+{
+  "name": "Manager"
+}
+
+### Get role with ID 1
+GET http://localhost:8080/api/roles/1
+
+
+### Get all users
+GET http://localhost:8080/api/users
+
+### Create Admin User
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "passwordHash": "test123",
+  "fullName": "System Administrator",
+  "email": "admin@example.com",
+  "phone": "01700000000",
+  "active": true,
+  "createdAt": "2026-09-26T19:30:00",
+  "role": {
+    "id": 1
+  }
+}
+
+### Create Customer
+POST http://localhost:8080/api/customers
+Content-Type: application/json
+
+{
+  "name": "Rahim Ahmed",
+  "phone": "01800000000",
+  "email": "rahim@example.com",
+  "address": "Mirpur, Dhaka",
+  "createdAt": "2026-09-26T19:30:00"
+}
+
+
+### Get all customers
+GET http://localhost:8080/api/customers
+
+### Create Supplier
+POST http://localhost:8080/api/suppliers
+Content-Type: application/json
+
+{
+  "name": "Joruri Shop",
+  "phone": "01900000000",
+  "email": "supplier@example.com",
+  "address": "Mitford, Dhaka",
+  "createdAt": "2026-09-26T19:30:00"
+}
+
+### Get all suppliers
+GET http://localhost:8080/api/suppliers
+
+### Get all categories
+GET http://localhost:8080/api/categories
+
+### Create Gadgets category
+POST http://localhost:8080/api/categories
+Content-Type: application/json
+
+{
+  "name": "Gadgets",
+  "description": "Electronic gadgets and accessories"
+}
+
+### Create Household category
+POST http://localhost:8080/api/categories
+Content-Type: application/json
+
+{
+  "name": "Household",
+  "description": "Household products"
+}
+
+### Get category with ID 1
+GET http://localhost:8080/api/categories/1
+
+### Get all products
+GET http://localhost:8080/api/products
+
+### Create Product
+POST http://localhost:8080/api/products
+Content-Type: application/json
+
+{
+  "sku": "GG-BRU-BLU",
+  "name": "7-in-1 Cleaning Brush",
+  "description": "Multi-purpose cleaning brush",
+  "unitCost": 110.00,
+  "sellingPrice": 240.00,
+  "reorderLevel": 5,
+  "status": "ACTIVE",
+  "category": {
+    "id": 1
+  },
+  "supplier": {
+    "id": 1
+  }
+}
+
+### Get product with ID 1
+GET http://localhost:8080/api/products/1
+
+### Get all inventory
+GET http://localhost:8080/api/inventory
+
+### Create inventory for Product ID 1
+POST http://localhost:8080/api/inventory
+Content-Type: application/json
+
+{
+  "product": {
+    "id": 1
+  },
+  "quantity": 20
+}
+
+### Get inventory with ID 1
+GET http://localhost:8080/api/inventory/1
+
+
+### Get all inventory
+GET http://localhost:8080/api/inventory
+
+### Create inventory for Product ID 1
+POST http://localhost:8080/api/inventory
+Content-Type: application/json
+
+{
+  "product": {
+    "id": 1
+  },
+  "quantity": 20
+}
+
+### Get inventory with ID 1
+GET http://localhost:8080/api/inventory/1
