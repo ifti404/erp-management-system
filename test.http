@@ -202,3 +202,70 @@ Content-Type: application/json
 
 ### Get purchase item with ID 1
 GET http://localhost:8080/api/purchase-items/1
+
+
+### Get all sales orders
+GET http://localhost:8080/api/sales-orders
+
+### Create Sales Order
+POST http://localhost:8080/api/sales-orders
+Content-Type: application/json
+
+{
+  "customer": {
+    "id": 1
+  },
+  "orderDate": "2026-09-26T19:30:00",
+  "status": "PENDING",
+  "totalAmount": 240.00,
+  "notes": "Customer order"
+}
+
+### Get sales order with ID 1
+GET http://localhost:8080/api/sales-orders/1
+
+
+### Get all sales items
+GET http://localhost:8080/api/sales-items
+
+### Create Sales Item
+POST http://localhost:8080/api/sales-items
+Content-Type: application/json
+
+{
+  "salesOrder": {
+    "id": 1
+  },
+  "product": {
+    "id": 1
+  },
+  "quantity": 2,
+  "unitPrice": 240.00,
+  "subtotal": 480.00
+}
+
+### Get sales item with ID 1
+GET http://localhost:8080/api/sales-items/1
+
+
+
+### Get all payments
+GET http://localhost:8080/api/payments
+
+### Create Sales Payment
+POST http://localhost:8080/api/payments
+Content-Type: application/json
+
+{
+  "paymentDate": "2026-09-26T19:30:00",
+  "amount": 480.00,
+  "paymentMethod": "CASH",
+  "status": "PAID",
+  "salesOrder": {
+    "id": 1
+  },
+  "notes": "Customer payment"
+}
+
+### Get payment with ID 1
+GET http://localhost:8080/api/payments/1
