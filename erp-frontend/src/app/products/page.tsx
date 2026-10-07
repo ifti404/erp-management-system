@@ -265,95 +265,130 @@ export default function ProductsPage() {
     }
   };
 
+  const inputClass =
+    'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
+  const selectClass =
+    'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
   return (
     <div>
-      <h1 className="text-3xl font-bold">Products</h1>
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
 
-      <p className="mt-2 text-muted-foreground">
-        Manage your products and pricing.
-      </p>
+        <p className="mt-2 text-muted-foreground">
+          Manage your products, pricing, categories, and suppliers.
+        </p>
+      </div>
 
       {/* Add / Edit Product Form */}
-      <div className="mt-8 rounded-lg border p-6">
-        <h2 className="text-xl font-semibold">
-          {editingId ? 'Edit Product' : 'Add Product'}
-        </h2>
+      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">
+              {editingId ? 'Edit Product' : 'Add Product'}
+            </h2>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {editingId
+                ? 'Update the selected product.'
+                : 'Create a new product in your catalog.'}
+            </p>
+          </div>
+        </div>
 
         <form
           onSubmit={handleSubmit}
-          className="mt-6 grid gap-4 md:grid-cols-2"
+          className="mt-6 grid gap-5 md:grid-cols-2"
         >
+          {/* SKU */}
           <div>
             <label className="text-sm font-medium">SKU</label>
 
             <input
               value={sku}
               onChange={(e) => setSku(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="e.g. CLN-BRU"
               required
             />
           </div>
 
+          {/* Name */}
           <div>
             <label className="text-sm font-medium">Name</label>
 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="Product name"
               required
             />
           </div>
 
+          {/* Description */}
           <div className="md:col-span-2">
             <label className="text-sm font-medium">Description</label>
 
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="Optional product description"
               rows={3}
             />
           </div>
 
+          {/* Unit Cost */}
           <div>
             <label className="text-sm font-medium">Unit Cost</label>
 
             <input
               type="number"
               step="0.01"
+              min="0"
               value={unitCost}
               onChange={(e) => setUnitCost(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="0.00"
               required
             />
           </div>
 
+          {/* Selling Price */}
           <div>
             <label className="text-sm font-medium">Selling Price</label>
 
             <input
               type="number"
               step="0.01"
+              min="0"
               value={sellingPrice}
               onChange={(e) => setSellingPrice(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="0.00"
               required
             />
           </div>
 
+          {/* Reorder Level */}
           <div>
             <label className="text-sm font-medium">Reorder Level</label>
 
             <input
               type="number"
+              min="0"
               value={reorderLevel}
               onChange={(e) => setReorderLevel(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={inputClass}
+              placeholder="0"
               required
             />
           </div>
 
+          {/* Category */}
           <div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Category</label>
@@ -361,7 +396,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setShowCategoryForm(!showCategoryForm)}
-                className="text-sm text-primary hover:underline"
+                className="text-sm font-medium text-primary hover:underline"
               >
                 {showCategoryForm ? 'Cancel' : '+ Add Category'}
               </button>
@@ -370,7 +405,7 @@ export default function ProductsPage() {
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={selectClass}
               required
             >
               <option value="">Select category</option>
@@ -384,25 +419,37 @@ export default function ProductsPage() {
 
             {showCategoryForm && (
               <div className="mt-3 space-y-3 rounded-md border bg-muted/30 p-4">
-                <input
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Category name"
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                />
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Category Name
+                  </label>
 
-                <textarea
-                  value={newCategoryDescription}
-                  onChange={(e) => setNewCategoryDescription(e.target.value)}
-                  placeholder="Description (optional)"
-                  rows={2}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                />
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Category name"
+                    className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Description
+                  </label>
+
+                  <textarea
+                    value={newCategoryDescription}
+                    onChange={(e) => setNewCategoryDescription(e.target.value)}
+                    placeholder="Optional description"
+                    rows={2}
+                    className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
 
                 <button
                   type="button"
                   onClick={handleAddCategory}
-                  className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                  className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   Add Category
                 </button>
@@ -410,13 +457,14 @@ export default function ProductsPage() {
             )}
           </div>
 
+          {/* Supplier */}
           <div>
             <label className="text-sm font-medium">Supplier</label>
 
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-2"
+              className={selectClass}
             >
               <option value="">No supplier</option>
 
@@ -428,10 +476,11 @@ export default function ProductsPage() {
             </select>
           </div>
 
-          <div className="flex gap-2 md:col-span-2">
+          {/* Form Actions */}
+          <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
               {editingId ? 'Update Product' : 'Add Product'}
             </button>
@@ -440,7 +489,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={clearForm}
-                className="rounded-md border px-4 py-2"
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
               >
                 Cancel
               </button>
@@ -449,55 +498,87 @@ export default function ProductsPage() {
         </form>
 
         {message && (
-          <p className="mt-4 text-sm text-muted-foreground">{message}</p>
+          <div className="mt-5 rounded-md border bg-muted/40 px-4 py-3">
+            <p className="text-sm text-muted-foreground">{message}</p>
+          </div>
         )}
       </div>
 
       {/* Product List */}
-      <div className="mt-8 rounded-lg border">
+      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="font-semibold">Product List</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {products.length} product{products.length !== 1 ? 's' : ''} in
+            catalog
+          </p>
+        </div>
+
         {loading ? (
-          <p className="p-6 text-muted-foreground">Loading products...</p>
+          <p className="p-6 text-sm text-muted-foreground">
+            Loading products...
+          </p>
         ) : products.length === 0 ? (
-          <p className="p-6 text-muted-foreground">No products found.</p>
+          <div className="p-10 text-center">
+            <p className="font-medium">No products found</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add your first product using the form above.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b text-left">
-                  <th className="p-4">SKU</th>
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Cost</th>
-                  <th className="p-4">Selling Price</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Actions</th>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-4 py-3 text-sm font-medium">SKU</th>
+                  <th className="px-4 py-3 text-sm font-medium">Name</th>
+                  <th className="px-4 py-3 text-sm font-medium">Cost</th>
+                  <th className="px-4 py-3 text-sm font-medium">
+                    Selling Price
+                  </th>
+                  <th className="px-4 py-3 text-sm font-medium">Status</th>
+                  <th className="px-4 py-3 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {products.map((product) => (
-                  <tr key={product.id} className="border-b">
-                    <td className="p-4">{product.sku}</td>
+                  <tr
+                    key={product.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">
+                      {product.sku}
+                    </td>
 
-                    <td className="p-4">{product.name}</td>
+                    <td className="px-4 py-3 text-sm">{product.name}</td>
 
-                    <td className="p-4">৳{product.unitCost}</td>
+                    <td className="px-4 py-3 text-sm">৳{product.unitCost}</td>
 
-                    <td className="p-4">৳{product.sellingPrice}</td>
+                    <td className="px-4 py-3 text-sm">
+                      ৳{product.sellingPrice}
+                    </td>
 
-                    <td className="p-4">{product.status}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                        {product.status}
+                      </span>
+                    </td>
 
-                    <td className="p-4">
+                    <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(product)}
-                          className="rounded-md border px-3 py-1 text-sm"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDelete(product.id)}
-                          className="rounded-md border px-3 py-1 text-sm"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
                         >
                           Delete
                         </button>

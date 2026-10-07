@@ -130,72 +130,97 @@ export default function SuppliersPage() {
     }
   };
 
+  const inputClass =
+    'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
   return (
     <div>
-      <h1 className="text-3xl font-bold">Suppliers</h1>
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Suppliers</h1>
 
-      <p className="mt-2 text-muted-foreground">Manage your suppliers.</p>
+        <p className="mt-2 text-muted-foreground">
+          Manage your supplier information and contact details.
+        </p>
+      </div>
 
       {/* Add / Edit Supplier Form */}
-      <div className="mt-6 rounded-lg border p-6">
-        <h2 className="text-xl font-semibold">
-          {editingId === null ? 'Add Supplier' : 'Edit Supplier'}
-        </h2>
+      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+        <div>
+          <h2 className="text-xl font-semibold">
+            {editingId === null ? 'Add Supplier' : 'Edit Supplier'}
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {editingId === null
+              ? 'Add a new supplier to your records.'
+              : 'Update the selected supplier.'}
+          </p>
+        </div>
 
         <form
           onSubmit={handleSubmit}
-          className="mt-4 grid gap-4 md:grid-cols-2"
+          className="mt-6 grid gap-5 md:grid-cols-2"
         >
+          {/* Name */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">Name</label>
 
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-md border px-3 py-2"
+              placeholder="Supplier name"
+              className={inputClass}
             />
           </div>
 
+          {/* Phone */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Phone</label>
+            <label className="text-sm font-medium">Phone</label>
 
             <input
               type="text"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              className="w-full rounded-md border px-3 py-2"
+              placeholder="Phone number"
+              className={inputClass}
             />
           </div>
 
+          {/* Email */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Email</label>
+            <label className="text-sm font-medium">Email</label>
 
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border px-3 py-2"
+              placeholder="Optional email address"
+              className={inputClass}
             />
           </div>
 
+          {/* Address */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Address</label>
+            <label className="text-sm font-medium">Address</label>
 
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full rounded-md border px-3 py-2"
+              placeholder="Optional address"
+              className={inputClass}
             />
           </div>
 
-          <div className="flex gap-2 md:col-span-2">
+          {/* Form Actions */}
+          <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-black px-4 py-2 text-white hover:bg-gray-800"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
               {editingId === null ? 'Add Supplier' : 'Update Supplier'}
             </button>
@@ -204,7 +229,7 @@ export default function SuppliersPage() {
               <button
                 type="button"
                 onClick={clearForm}
-                className="rounded-md border px-4 py-2 hover:bg-muted"
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
               >
                 Cancel
               </button>
@@ -213,53 +238,79 @@ export default function SuppliersPage() {
         </form>
       </div>
 
-      {/* Supplier Table */}
-      <div className="mt-8 rounded-lg border">
+      {/* Supplier List */}
+      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="font-semibold">Supplier List</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {suppliers.length} supplier
+            {suppliers.length !== 1 ? 's' : ''} in records.
+          </p>
+        </div>
+
         {loading ? (
-          <p className="p-6 text-muted-foreground">Loading suppliers...</p>
+          <p className="p-6 text-sm text-muted-foreground">
+            Loading suppliers...
+          </p>
         ) : suppliers.length === 0 ? (
-          <p className="p-6 text-muted-foreground">No suppliers found.</p>
+          <div className="p-10 text-center">
+            <p className="font-medium">No suppliers found</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add your first supplier using the form above.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b text-left">
-                  <th className="p-4">Name</th>
-                  <th className="p-4">Phone</th>
-                  <th className="p-4">Email</th>
-                  <th className="p-4">Address</th>
-                  <th className="p-4">Created At</th>
-                  <th className="p-4">Actions</th>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-4 py-3 text-sm font-medium">Name</th>
+                  <th className="px-4 py-3 text-sm font-medium">Phone</th>
+                  <th className="px-4 py-3 text-sm font-medium">Email</th>
+                  <th className="px-4 py-3 text-sm font-medium">Address</th>
+                  <th className="px-4 py-3 text-sm font-medium">Created At</th>
+                  <th className="px-4 py-3 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {suppliers.map((supplier) => (
-                  <tr key={supplier.id} className="border-b">
-                    <td className="p-4">{supplier.name}</td>
+                  <tr
+                    key={supplier.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">
+                      {supplier.name}
+                    </td>
 
-                    <td className="p-4">{supplier.phone}</td>
+                    <td className="px-4 py-3 text-sm">{supplier.phone}</td>
 
-                    <td className="p-4">{supplier.email || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {supplier.email || '-'}
+                    </td>
 
-                    <td className="p-4">{supplier.address || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {supplier.address || '-'}
+                    </td>
 
-                    <td className="p-4">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {new Date(supplier.createdAt).toLocaleString()}
                     </td>
 
-                    <td className="p-4">
+                    <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(supplier)}
-                          className="rounded-md border px-3 py-1 hover:bg-muted"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDelete(supplier.id)}
-                          className="rounded-md border px-3 py-1 hover:bg-muted"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
                         >
                           Delete
                         </button>

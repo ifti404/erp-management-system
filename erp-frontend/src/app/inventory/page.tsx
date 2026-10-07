@@ -46,54 +46,79 @@ export default function InventoryPage() {
     (item) => item.quantity === 0,
   ).length;
 
+  const cardClass = 'rounded-lg border bg-card p-5 shadow-sm';
+
   return (
     <div>
-      <h1 className="text-3xl font-bold">Inventory</h1>
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
 
-      <p className="mt-2 text-muted-foreground">Track current stock levels.</p>
+        <p className="mt-2 text-muted-foreground">
+          Track current stock levels and inventory status.
+        </p>
+      </div>
 
       {/* Summary Cards */}
       <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <div className="rounded-lg border p-5">
+        <div className={cardClass}>
           <p className="text-sm text-muted-foreground">Total Products</p>
           <p className="mt-2 text-2xl font-bold">{totalProducts}</p>
         </div>
 
-        <div className="rounded-lg border p-5">
+        <div className={cardClass}>
           <p className="text-sm text-muted-foreground">Total Units</p>
           <p className="mt-2 text-2xl font-bold">{totalUnits}</p>
         </div>
 
-        <div className="rounded-lg border p-5">
+        <div className={cardClass}>
           <p className="text-sm text-muted-foreground">Low Stock</p>
           <p className="mt-2 text-2xl font-bold">{lowStockProducts}</p>
         </div>
 
-        <div className="rounded-lg border p-5">
+        <div className={cardClass}>
           <p className="text-sm text-muted-foreground">Out of Stock</p>
           <p className="mt-2 text-2xl font-bold">{outOfStockProducts}</p>
         </div>
       </div>
 
       {/* Inventory Table */}
-      <div className="mt-8 rounded-lg border">
-        {loading ? (
-          <p className="p-6 text-muted-foreground">Loading inventory...</p>
-        ) : inventory.length === 0 ? (
-          <p className="p-6 text-muted-foreground">
-            No inventory records found.
+      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="font-semibold">Inventory List</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Current stock for all products.
           </p>
+        </div>
+
+        {loading ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            Loading inventory...
+          </p>
+        ) : inventory.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="font-medium">No inventory records found</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Inventory records will appear when products are added.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b text-left">
-                  <th className="p-4">SKU</th>
-                  <th className="p-4">Product</th>
-                  <th className="p-4">Quantity</th>
-                  <th className="p-4">Reorder Level</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Last Updated</th>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-4 py-3 text-sm font-medium">SKU</th>
+                  <th className="px-4 py-3 text-sm font-medium">Product</th>
+                  <th className="px-4 py-3 text-sm font-medium">Quantity</th>
+                  <th className="px-4 py-3 text-sm font-medium">
+                    Reorder Level
+                  </th>
+                  <th className="px-4 py-3 text-sm font-medium">Status</th>
+                  <th className="px-4 py-3 text-sm font-medium">
+                    Last Updated
+                  </th>
                 </tr>
               </thead>
 
@@ -108,18 +133,31 @@ export default function InventoryPage() {
                   }
 
                   return (
-                    <tr key={item.id} className="border-b">
-                      <td className="p-4">{item.product.sku}</td>
+                    <tr
+                      key={item.id}
+                      className="border-b last:border-b-0 hover:bg-muted/20"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {item.product.sku}
+                      </td>
 
-                      <td className="p-4">{item.product.name}</td>
+                      <td className="px-4 py-3 text-sm">{item.product.name}</td>
 
-                      <td className="p-4">{item.quantity}</td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {item.quantity}
+                      </td>
 
-                      <td className="p-4">{item.product.reorderLevel}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {item.product.reorderLevel}
+                      </td>
 
-                      <td className="p-4">{status}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                          {status}
+                        </span>
+                      </td>
 
-                      <td className="p-4">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {new Date(item.updatedAt).toLocaleString()}
                       </td>
                     </tr>

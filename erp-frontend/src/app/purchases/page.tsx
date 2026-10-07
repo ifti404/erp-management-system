@@ -54,10 +54,6 @@ export default function PurchasesPage() {
   const [unitCost, setUnitCost] = useState('');
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
 
-  // =========================
-  // FETCH DATA
-  // =========================
-
   const fetchOrders = async () => {
     try {
       const response = await fetch('http://localhost:8080/api/purchase-orders');
@@ -190,7 +186,6 @@ export default function PurchasesPage() {
         console.error(errorData);
 
         alert(errorData.message || 'Failed to save purchase order');
-
         return;
       }
 
@@ -205,9 +200,7 @@ export default function PurchasesPage() {
   const handleEditOrder = (order: PurchaseOrder) => {
     setEditingOrderId(order.id);
     setSupplierId(String(order.supplier.id));
-
     setOrderDate(order.orderDate ? order.orderDate.substring(0, 16) : '');
-
     setStatus(order.status);
     setNotes(order.notes || '');
 
@@ -238,7 +231,6 @@ export default function PurchasesPage() {
         const errorData = await response.json();
 
         alert(errorData.message || 'Failed to delete purchase order');
-
         return;
       }
 
@@ -325,7 +317,6 @@ export default function PurchasesPage() {
         console.error(errorData);
 
         alert(errorData.message || 'Failed to save purchase item');
-
         return;
       }
 
@@ -372,7 +363,6 @@ export default function PurchasesPage() {
         const errorData = await response.json();
 
         alert(errorData.message || 'Failed to delete purchase item');
-
         return;
       }
 
@@ -383,118 +373,132 @@ export default function PurchasesPage() {
     }
   };
 
-  // =========================
-  // UI
-  // =========================
+  const inputClass =
+    'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
+  const statusClass = (value: string) => {
+    if (value === 'RECEIVED') {
+      return 'bg-green-100 text-green-700';
+    }
+
+    if (value === 'CANCELLED') {
+      return 'bg-red-100 text-red-700';
+    }
+
+    if (value === 'ORDERED') {
+      return 'bg-blue-100 text-blue-700';
+    }
+
+    return 'bg-muted text-muted-foreground';
+  };
 
   return (
-    <div className="space-y-8">
-      {/* PAGE HEADER */}
-
+    <div>
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold">Purchases</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Purchases</h1>
 
-        <p className="text-sm text-gray-500">
+        <p className="mt-2 text-muted-foreground">
           Manage purchase orders, items, and inventory.
         </p>
       </div>
 
-      {/* =========================
-          PURCHASE ORDER FORM
-          ========================= */}
+      {/* Purchase Order Form */}
+      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+        <div>
+          <h2 className="text-xl font-semibold">
+            {editingOrderId === null
+              ? 'Add Purchase Order'
+              : 'Edit Purchase Order'}
+          </h2>
 
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">
-          {editingOrderId ? 'Edit Purchase Order' : 'Add Purchase Order'}
-        </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {editingOrderId === null
+              ? 'Create a new purchase order.'
+              : 'Update the selected purchase order.'}
+          </p>
+        </div>
 
-        <form onSubmit={handleOrderSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Supplier */}
+        <form
+          onSubmit={handleOrderSubmit}
+          className="mt-6 grid gap-5 md:grid-cols-2"
+        >
+          {/* Supplier */}
+          <div>
+            <label className="text-sm font-medium">Supplier *</label>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Supplier *
-              </label>
+            <select
+              value={supplierId}
+              onChange={(e) => setSupplierId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Select supplier</option>
 
-              <select
-                value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              >
-                <option value="">Select supplier</option>
-
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Order Date */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Order Date *
-              </label>
-
-              <input
-                type="datetime-local"
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              />
-            </div>
-
-            {/* Status */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">Status *</label>
-
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              >
-                <option value="PENDING">PENDING</option>
-
-                <option value="ORDERED">ORDERED</option>
-
-                <option value="RECEIVED">RECEIVED</option>
-
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
-            </div>
-
-            {/* Notes */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">Notes</label>
-
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional notes"
-                className="w-full rounded-md border px-3 py-2"
-              />
-            </div>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex gap-2">
+          {/* Order Date */}
+          <div>
+            <label className="text-sm font-medium">Order Date *</label>
+
+            <input
+              type="datetime-local"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="text-sm font-medium">Status *</label>
+
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className={inputClass}
+            >
+              <option value="PENDING">PENDING</option>
+              <option value="ORDERED">ORDERED</option>
+              <option value="RECEIVED">RECEIVED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-sm font-medium">Notes</label>
+
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes"
+              className={inputClass}
+            />
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-black px-4 py-2 text-white"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
-              {editingOrderId ? 'Update Purchase Order' : 'Add Purchase Order'}
+              {editingOrderId === null
+                ? 'Add Purchase Order'
+                : 'Update Purchase Order'}
             </button>
 
-            {editingOrderId && (
+            {editingOrderId !== null && (
               <button
                 type="button"
                 onClick={resetOrderForm}
-                className="rounded-md border px-4 py-2"
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
               >
                 Cancel
               </button>
@@ -503,73 +507,90 @@ export default function PurchasesPage() {
         </form>
       </div>
 
-      {/* =========================
-          PURCHASE ORDERS TABLE
-          ========================= */}
-
-      <div className="rounded-lg border bg-white shadow-sm">
-        <div className="border-b p-4">
+      {/* Purchase Orders */}
+      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
           <h2 className="font-semibold">Purchase Orders</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {orders.length} purchase order
+            {orders.length !== 1 ? 's' : ''} in records.
+          </p>
         </div>
 
         {loading ? (
-          <div className="p-6 text-gray-500">Loading...</div>
+          <p className="p-6 text-sm text-muted-foreground">
+            Loading purchase orders...
+          </p>
         ) : orders.length === 0 ? (
-          <div className="p-6 text-gray-500">No purchase orders found.</div>
+          <div className="p-10 text-center">
+            <p className="font-medium">No purchase orders found</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Create your first purchase order using the form above.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-
-                  <th className="px-4 py-3 text-left">Supplier</th>
-
-                  <th className="px-4 py-3 text-left">Order Date</th>
-
-                  <th className="px-4 py-3 text-left">Status</th>
-
-                  <th className="px-4 py-3 text-left">Total</th>
-
-                  <th className="px-4 py-3 text-left">Notes</th>
-
-                  <th className="px-4 py-3 text-left">Actions</th>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-4 py-3 text-sm font-medium">ID</th>
+                  <th className="px-4 py-3 text-sm font-medium">Supplier</th>
+                  <th className="px-4 py-3 text-sm font-medium">Order Date</th>
+                  <th className="px-4 py-3 text-sm font-medium">Status</th>
+                  <th className="px-4 py-3 text-sm font-medium">Total</th>
+                  <th className="px-4 py-3 text-sm font-medium">Notes</th>
+                  <th className="px-4 py-3 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b">
-                    <td className="px-4 py-3">{order.id}</td>
+                  <tr
+                    key={order.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">
+                      #{order.id}
+                    </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       {order.supplier?.name || 'Unknown'}
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       {new Date(order.orderDate).toLocaleString()}
                     </td>
 
-                    <td className="px-4 py-3">{order.status}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
+                          order.status,
+                        )}`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm font-medium">
                       ৳{Number(order.totalAmount).toFixed(2)}
                     </td>
 
-                    <td className="px-4 py-3">{order.notes || '-'}</td>
+                    <td className="px-4 py-3 text-sm">{order.notes || '-'}</td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditOrder(order)}
-                          className="rounded-md border px-3 py-1"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDeleteOrder(order.id)}
-                          className="rounded-md bg-red-600 px-3 py-1 text-white"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
                         >
                           Delete
                         </button>
@@ -583,113 +604,112 @@ export default function PurchasesPage() {
         )}
       </div>
 
-      {/* =========================
-          PURCHASE ITEM FORM
-          ========================= */}
+      {/* Purchase Item Form */}
+      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+        <div>
+          <h2 className="text-xl font-semibold">
+            {editingItemId === null
+              ? 'Add Purchase Item'
+              : 'Edit Purchase Item'}
+          </h2>
 
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">
-          {editingItemId ? 'Edit Purchase Item' : 'Add Purchase Item'}
-        </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {editingItemId === null
+              ? 'Add a product to an existing purchase order.'
+              : 'Update the selected purchase item.'}
+          </p>
+        </div>
 
-        <form onSubmit={handleItemSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Purchase Order */}
+        <form
+          onSubmit={handleItemSubmit}
+          className="mt-6 grid gap-5 md:grid-cols-2"
+        >
+          {/* Purchase Order */}
+          <div>
+            <label className="text-sm font-medium">Purchase Order *</label>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Purchase Order *
-              </label>
+            <select
+              value={purchaseOrderId}
+              onChange={(e) => setPurchaseOrderId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Select purchase order</option>
 
-              <select
-                value={purchaseOrderId}
-                onChange={(e) => setPurchaseOrderId(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              >
-                <option value="">Select purchase order</option>
-
-                {orders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    #{order.id} — {order.supplier?.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Product */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Product *
-              </label>
-
-              <select
-                value={productId}
-                onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              >
-                <option value="">Select product</option>
-
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.sku} — {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Quantity */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Quantity *
-              </label>
-
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              />
-            </div>
-
-            {/* Unit Cost */}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Unit Cost *
-              </label>
-
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={unitCost}
-                onChange={(e) => setUnitCost(e.target.value)}
-                className="w-full rounded-md border px-3 py-2"
-              />
-            </div>
+              {orders.map((order) => (
+                <option key={order.id} value={order.id}>
+                  #{order.id} — {order.supplier?.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <p className="text-xs text-gray-500">
+          {/* Product */}
+          <div>
+            <label className="text-sm font-medium">Product *</label>
+
+            <select
+              value={productId}
+              onChange={(e) => handleProductChange(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Select product</option>
+
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.sku} — {product.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <label className="text-sm font-medium">Quantity *</label>
+
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Unit Cost */}
+          <div>
+            <label className="text-sm font-medium">Unit Cost *</label>
+
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground md:col-span-2">
             Subtotal and purchase order total are calculated automatically by
             the backend.
           </p>
 
-          <div className="flex gap-2">
+          {/* Form Actions */}
+          <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-black px-4 py-2 text-white"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
-              {editingItemId ? 'Update Purchase Item' : 'Add Purchase Item'}
+              {editingItemId === null
+                ? 'Add Purchase Item'
+                : 'Update Purchase Item'}
             </button>
 
-            {editingItemId && (
+            {editingItemId !== null && (
               <button
                 type="button"
                 onClick={resetItemForm}
-                className="rounded-md border px-4 py-2"
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
               >
                 Cancel
               </button>
@@ -698,73 +718,84 @@ export default function PurchasesPage() {
         </form>
       </div>
 
-      {/* =========================
-          PURCHASE ITEMS TABLE
-          ========================= */}
-
-      <div className="rounded-lg border bg-white shadow-sm">
-        <div className="border-b p-4">
+      {/* Purchase Items */}
+      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
           <h2 className="font-semibold">Purchase Items</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {items.length} purchase item
+            {items.length !== 1 ? 's' : ''} in records.
+          </p>
         </div>
 
         {loading ? (
-          <div className="p-6 text-gray-500">Loading...</div>
+          <p className="p-6 text-sm text-muted-foreground">
+            Loading purchase items...
+          </p>
         ) : items.length === 0 ? (
-          <div className="p-6 text-gray-500">No purchase items found.</div>
+          <div className="p-10 text-center">
+            <p className="font-medium">No purchase items found</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add items to your purchase orders using the form above.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left">ID</th>
-
-                  <th className="px-4 py-3 text-left">Order</th>
-
-                  <th className="px-4 py-3 text-left">Product</th>
-
-                  <th className="px-4 py-3 text-left">Quantity</th>
-
-                  <th className="px-4 py-3 text-left">Unit Cost</th>
-
-                  <th className="px-4 py-3 text-left">Subtotal</th>
-
-                  <th className="px-4 py-3 text-left">Actions</th>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/40 text-left">
+                  <th className="px-4 py-3 text-sm font-medium">ID</th>
+                  <th className="px-4 py-3 text-sm font-medium">Order</th>
+                  <th className="px-4 py-3 text-sm font-medium">Product</th>
+                  <th className="px-4 py-3 text-sm font-medium">Quantity</th>
+                  <th className="px-4 py-3 text-sm font-medium">Unit Cost</th>
+                  <th className="px-4 py-3 text-sm font-medium">Subtotal</th>
+                  <th className="px-4 py-3 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className="border-b">
-                    <td className="px-4 py-3">{item.id}</td>
+                  <tr
+                    key={item.id}
+                    className="border-b last:border-b-0 hover:bg-muted/20"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium">
+                      #{item.id}
+                    </td>
 
-                    <td className="px-4 py-3">#{item.purchaseOrder?.id}</td>
+                    <td className="px-4 py-3 text-sm">
+                      #{item.purchaseOrder?.id}
+                    </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       {item.product?.name || 'Unknown'}
                     </td>
 
-                    <td className="px-4 py-3">{item.quantity}</td>
+                    <td className="px-4 py-3 text-sm">{item.quantity}</td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       ৳{Number(item.unitCost).toFixed(2)}
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm font-medium">
                       ৳{Number(item.subtotal).toFixed(2)}
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditItem(item)}
-                          className="rounded-md border px-3 py-1"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
                         >
                           Edit
                         </button>
 
                         <button
                           onClick={() => handleDeleteItem(item.id)}
-                          className="rounded-md bg-red-600 px-3 py-1 text-white"
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
                         >
                           Delete
                         </button>

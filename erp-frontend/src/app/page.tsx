@@ -135,85 +135,126 @@ export default function Dashboard() {
     )
     .slice(0, 5);
 
+  const orderStatusClass = (status: string) => {
+    switch (status) {
+      case 'DELIVERED':
+      case 'RECEIVED':
+        return 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300';
+
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
+
+      case 'SHIPPED':
+      case 'ORDERED':
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300';
+
+      case 'CONFIRMED':
+        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300';
+
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
   return (
     <div className="space-y-8">
+      {/* ERROR */}
       {error && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
+      {/* PAGE HEADER */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500">Overview of your business</p>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">Overview of your business</p>
       </div>
 
-      {/* Summary Cards */}
+      {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Products</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Total Products</p>
           <p className="mt-2 text-3xl font-bold">{products.length}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Total Inventory Units</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Total Inventory Units</p>
           <p className="mt-2 text-3xl font-bold">{totalInventoryUnits}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Low Stock</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Low Stock</p>
           <p className="mt-2 text-3xl font-bold">{lowStock.length}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Out of Stock</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Out of Stock</p>
           <p className="mt-2 text-3xl font-bold">{outOfStock.length}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Sales Received</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Sales Received</p>
           <p className="mt-2 text-3xl font-bold">৳{salesReceived.toFixed(2)}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Purchases Paid</p>
+        <div className="rounded-lg border bg-card p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Purchases Paid</p>
           <p className="mt-2 text-3xl font-bold">৳{purchasesPaid.toFixed(2)}</p>
         </div>
       </div>
 
-      {/* Recent Sales */}
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold">Recent Sales Orders</h2>
+      {/* RECENT SALES */}
+      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="text-xl font-semibold">Recent Sales Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Latest sales activity
+          </p>
+        </div>
 
         {recentSales.length === 0 ? (
-          <p className="text-gray-500">No sales orders yet.</p>
+          <div className="px-6 py-12 text-center text-muted-foreground">
+            No sales orders yet.
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-3 py-3">ID</th>
-                  <th className="px-3 py-3">Customer</th>
-                  <th className="px-3 py-3">Date</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Total</th>
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">ID</th>
+                  <th className="px-4 py-3 text-left font-medium">Customer</th>
+                  <th className="px-4 py-3 text-left font-medium">Date</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Total</th>
                 </tr>
               </thead>
 
               <tbody>
                 {recentSales.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0">
-                    <td className="px-3 py-3">#{order.id}</td>
+                  <tr
+                    key={order.id}
+                    className="border-b last:border-0 transition-colors hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-medium">#{order.id}</td>
 
-                    <td className="px-3 py-3">{order.customer.name}</td>
+                    <td className="px-4 py-3">{order.customer.name}</td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       {new Date(order.orderDate).toLocaleDateString()}
                     </td>
 
-                    <td className="px-3 py-3">{order.status}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(
+                          order.status,
+                        )}`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3 font-medium">
                       ৳{order.totalAmount.toFixed(2)}
                     </td>
                   </tr>
@@ -222,41 +263,59 @@ export default function Dashboard() {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Recent Purchases */}
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold">Recent Purchase Orders</h2>
+      {/* RECENT PURCHASES */}
+      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="text-xl font-semibold">Recent Purchase Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Latest purchasing activity
+          </p>
+        </div>
 
         {recentPurchases.length === 0 ? (
-          <p className="text-gray-500">No purchase orders yet.</p>
+          <div className="px-6 py-12 text-center text-muted-foreground">
+            No purchase orders yet.
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-3 py-3">ID</th>
-                  <th className="px-3 py-3">Supplier</th>
-                  <th className="px-3 py-3">Date</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Total</th>
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">ID</th>
+                  <th className="px-4 py-3 text-left font-medium">Supplier</th>
+                  <th className="px-4 py-3 text-left font-medium">Date</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Total</th>
                 </tr>
               </thead>
 
               <tbody>
                 {recentPurchases.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0">
-                    <td className="px-3 py-3">#{order.id}</td>
+                  <tr
+                    key={order.id}
+                    className="border-b last:border-0 transition-colors hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-medium">#{order.id}</td>
 
-                    <td className="px-3 py-3">{order.supplier.name}</td>
+                    <td className="px-4 py-3">{order.supplier.name}</td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       {new Date(order.orderDate).toLocaleDateString()}
                     </td>
 
-                    <td className="px-3 py-3">{order.status}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${orderStatusClass(
+                          order.status,
+                        )}`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
 
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3 font-medium">
                       ৳{order.totalAmount.toFixed(2)}
                     </td>
                   </tr>
@@ -265,43 +324,57 @@ export default function Dashboard() {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Low Stock */}
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold">Low Stock Products</h2>
+      {/* LOW STOCK */}
+      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="text-xl font-semibold">Low Stock Products</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Products that need replenishment
+          </p>
+        </div>
 
         {lowStock.length === 0 ? (
-          <p className="text-gray-500">No low-stock products.</p>
+          <div className="px-6 py-12 text-center text-muted-foreground">
+            No low-stock products.
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-3 py-3">SKU</th>
-                  <th className="px-3 py-3">Product</th>
-                  <th className="px-3 py-3">Quantity</th>
-                  <th className="px-3 py-3">Reorder Level</th>
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">SKU</th>
+                  <th className="px-4 py-3 text-left font-medium">Product</th>
+                  <th className="px-4 py-3 text-left font-medium">Quantity</th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    Reorder Level
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {lowStock.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="px-3 py-3">{item.product.sku}</td>
+                  <tr
+                    key={item.id}
+                    className="border-b last:border-0 transition-colors hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      {item.product.sku}
+                    </td>
 
-                    <td className="px-3 py-3">{item.product.name}</td>
+                    <td className="px-4 py-3">{item.product.name}</td>
 
-                    <td className="px-3 py-3">{item.quantity}</td>
+                    <td className="px-4 py-3 font-medium">{item.quantity}</td>
 
-                    <td className="px-3 py-3">{item.product.reorderLevel}</td>
+                    <td className="px-4 py-3">{item.product.reorderLevel}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
