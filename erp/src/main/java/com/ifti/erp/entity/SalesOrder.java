@@ -37,9 +37,39 @@ public class SalesOrder {
     @DecimalMin(value = "0.0", message = "Total amount cannot be negative")
     private BigDecimal totalAmount;
 
+    @Column(name = "delivery_charge", nullable = false, precision = 12, scale = 2)
+    @DecimalMin(value = "0.0", message = "Delivery charge cannot be negative")
+    private BigDecimal deliveryCharge = BigDecimal.ZERO;
+    
+    @Column(length = 30)
+    @Size(max = 30, message = "Courier must not exceed 30 characters")
+    private String courier;
+
+    @Column(name = "parcel_id", length = 100)
+    @Size(max = 100, message = "Parcel ID must not exceed 100 characters")
+    private String parcelId;
+
     @Column(length = 255)
     @Size(max = 255, message = "Notes must not exceed 255 characters")
     private String notes;
+
+
+
+    public String getCourier() {
+    return courier;
+    }
+
+    public void setCourier(String courier) {
+    this.courier = courier;
+    }
+
+    public String getParcelId() {
+    return parcelId;
+    }
+
+    public void setParcelId(String parcelId) {
+    this.parcelId = parcelId;
+    }
 
     public SalesOrder() {
     }
@@ -75,10 +105,18 @@ public class SalesOrder {
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
+    public BigDecimal getDeliveryCharge() {
+    return deliveryCharge;
+    }
+
+    public void setDeliveryCharge(BigDecimal deliveryCharge) {
+    this.deliveryCharge = deliveryCharge;
+    }
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
+    
 
     public String getNotes() {
         return notes;

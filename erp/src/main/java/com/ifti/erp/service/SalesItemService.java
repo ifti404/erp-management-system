@@ -202,22 +202,28 @@ public class SalesItemService {
         updateSalesOrderTotal(orderId);
     }
 
-    private void updateSalesOrderTotal(Long orderId) {
+   private void updateSalesOrderTotal(Long orderId) {
 
-        SalesOrder order =
-                salesOrderRepository.findById(orderId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Sales order not found"));
+    SalesOrder order =
+            salesOrderRepository.findById(orderId)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Sales order not found"));
 
-        BigDecimal total =
-                salesItemRepository
-                        .calculateTotalBySalesOrderId(orderId);
+    BigDecimal itemsSubtotal =
+            salesItemRepository
+                    .calculateTotalBySalesOrderId(orderId);
 
-        order.setTotalAmount(total);
+    BigDecimal deliveryCharge = order.getDeliveryCharge() == null
+            ? BigDecimal.ZERO
+            : order.getDeliveryCharge();
 
-        salesOrderRepository.save(order);
-    }
+    BigDecimal codAmount = itemsSubtotal.add(deliveryCharge);
+
+    order.setTotalAmount(codAmount);
+
+    salesOrderRepository.save(order);
+}
 
     private Inventory getInventory(Long productId) {
 
