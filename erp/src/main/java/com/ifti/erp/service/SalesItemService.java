@@ -25,7 +25,6 @@ public class SalesItemService {
             SalesItemRepository salesItemRepository,
             InventoryRepository inventoryRepository,
             SalesOrderRepository salesOrderRepository) {
-
         this.salesItemRepository = salesItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.salesOrderRepository = salesOrderRepository;
@@ -41,39 +40,31 @@ public class SalesItemService {
 
     @Transactional
     public SalesItem createSalesItem(SalesItem salesItem) {
+        Long orderId = salesItem.getSalesOrder().getId();
+
+        SalesOrder order = getOrder(orderId);
+        ensureOrderCanBeEdited(order);
 
         Inventory inventory = getInventory(
-                salesItem.getProduct().getId()
-        );
+                salesItem.getProduct().getId());
 
         if (inventory.getQuantity() < salesItem.getQuantity()) {
             throw new RuntimeException("Insufficient inventory");
         }
 
         inventory.setQuantity(
-                inventory.getQuantity()
-                        - salesItem.getQuantity()
-        );
-
+                inventory.getQuantity() - salesItem.getQuantity());
         inventory.setUpdatedAt(LocalDateTime.now());
-
         inventoryRepository.save(inventory);
 
+        salesItem.setSalesOrder(order);
         salesItem.setSubtotal(
-                salesItem.getUnitPrice()
-                        .multiply(
-                                BigDecimal.valueOf(
-                                        salesItem.getQuantity()
-                                )
-                        )
-        );
+                salesItem.getUnitPrice().multiply(
+                        BigDecimal.valueOf(salesItem.getQuantity())));
 
-        SalesItem savedItem =
-                salesItemRepository.save(salesItem);
+        SalesItem savedItem = salesItemRepository.save(salesItem);
 
-        updateSalesOrderTotal(
-                salesItem.getSalesOrder().getId()
-        );
+        updateSalesOrderTotal(orderId);
 
         return savedItem;
     }
@@ -83,84 +74,59 @@ public class SalesItemService {
             Long id,
             SalesItem salesItemDetails) {
 
-        SalesItem existingItem =
-                salesItemRepository.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Sales item not found"));
+        SalesItem existingItem = salesItemRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Sales item not found"));
 
-        Long oldOrderId =
-                existingItem.getSalesOrder().getId();
+        Long oldOrderId = existingItem.getSalesOrder().getId();
+        Long newOrderId = salesItemDetails.getSalesOrder().getId();
 
-        Long newOrderId =
-                salesItemDetails.getSalesOrder().getId();
+        SalesOrder oldOrder = getOrder(oldOrderId);
+        SalesOrder newOrder = getOrder(newOrderId);
 
-        // Restore old quantity
+        ensureOrderCanBeEdited(oldOrder);
+        ensureOrderCanBeEdited(newOrder);
+
         Inventory oldInventory = getInventory(
-                existingItem.getProduct().getId()
-        );
+                existingItem.getProduct().getId());
 
-        oldInventory.setQuantity(
-                oldInventory.getQuantity()
-                        + existingItem.getQuantity()
-        );
-
-        oldInventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(oldInventory);
-
-        // Check new quantity
         Inventory newInventory = getInventory(
-                salesItemDetails.getProduct().getId()
-        );
+                salesItemDetails.getProduct().getId());
 
-        if (newInventory.getQuantity()
-                < salesItemDetails.getQuantity()) {
+        // Calculate stock available after reversing the old item.
+        int oldQuantity = existingItem.getQuantity();
+        int newQuantity = salesItemDetails.getQuantity();
 
+        int availableForNewItem = newInventory.getQuantity();
+
+        if (oldInventory.getId().equals(newInventory.getId())) {
+            availableForNewItem += oldQuantity;
+        }
+
+        if (availableForNewItem < newQuantity) {
             throw new RuntimeException("Insufficient inventory");
         }
 
-        // Deduct new quantity
+        oldInventory.setQuantity(
+                oldInventory.getQuantity() + oldQuantity);
+        oldInventory.setUpdatedAt(LocalDateTime.now());
+        inventoryRepository.save(oldInventory);
+
         newInventory.setQuantity(
-                newInventory.getQuantity()
-                        - salesItemDetails.getQuantity()
-        );
-
+                newInventory.getQuantity() - newQuantity);
         newInventory.setUpdatedAt(LocalDateTime.now());
-
         inventoryRepository.save(newInventory);
 
-        // Update item fields
-        existingItem.setSalesOrder(
-                salesItemDetails.getSalesOrder()
-        );
-
-        existingItem.setProduct(
-                salesItemDetails.getProduct()
-        );
-
-        existingItem.setQuantity(
-                salesItemDetails.getQuantity()
-        );
-
-        existingItem.setUnitPrice(
-                salesItemDetails.getUnitPrice()
-        );
-
-        // Calculate subtotal
+        existingItem.setSalesOrder(newOrder);
+        existingItem.setProduct(salesItemDetails.getProduct());
+        existingItem.setQuantity(newQuantity);
+        existingItem.setUnitPrice(salesItemDetails.getUnitPrice());
         existingItem.setSubtotal(
-                salesItemDetails.getUnitPrice()
-                        .multiply(
-                                BigDecimal.valueOf(
-                                        salesItemDetails.getQuantity()
-                                )
-                        )
-        );
+                salesItemDetails.getUnitPrice().multiply(
+                        BigDecimal.valueOf(newQuantity)));
 
-        SalesItem updatedItem =
-                salesItemRepository.save(existingItem);
+        SalesItem updatedItem = salesItemRepository.save(existingItem);
 
-        // Recalculate totals
         updateSalesOrderTotal(oldOrderId);
 
         if (!oldOrderId.equals(newOrderId)) {
@@ -172,64 +138,72 @@ public class SalesItemService {
 
     @Transactional
     public void deleteSalesItem(Long id) {
+        SalesItem salesItem = salesItemRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Sales item not found"));
 
-        SalesItem salesItem =
-                salesItemRepository.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Sales item not found"));
+        SalesOrder order = getOrder(
+                salesItem.getSalesOrder().getId());
 
-        Long orderId =
-                salesItem.getSalesOrder().getId();
+        // If stock was already released, do not add it a second time.
+        if (!order.isInventoryReleased()) {
+            Inventory inventory = getInventory(
+                    salesItem.getProduct().getId());
 
-        Inventory inventory = getInventory(
-                salesItem.getProduct().getId()
-        );
+            inventory.setQuantity(
+                    inventory.getQuantity() + salesItem.getQuantity());
+            inventory.setUpdatedAt(LocalDateTime.now());
 
-        // Return sold quantity to inventory
-        inventory.setQuantity(
-                inventory.getQuantity()
-                        + salesItem.getQuantity()
-        );
+            inventoryRepository.save(inventory);
+        }
 
-        inventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(inventory);
+        Long orderId = order.getId();
 
         salesItemRepository.delete(salesItem);
 
-        // Recalculate order total
         updateSalesOrderTotal(orderId);
     }
 
-   private void updateSalesOrderTotal(Long orderId) {
+    private void ensureOrderCanBeEdited(SalesOrder order) {
+        if (order.isInventoryReleased()
+                || isStockReleasedStatus(order.getStatus())) {
+            throw new RuntimeException(
+                    "Cannot add or edit items on a cancelled or returned order. "
+                            + "Reactivate the order first.");
+        }
+    }
 
-    SalesOrder order =
-            salesOrderRepository.findById(orderId)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Sales order not found"));
+    private boolean isStockReleasedStatus(String status) {
+        return status != null
+                && (status.equalsIgnoreCase("CANCELLED")
+                || status.equalsIgnoreCase("RETURNED"));
+    }
 
-    BigDecimal itemsSubtotal =
-            salesItemRepository
-                    .calculateTotalBySalesOrderId(orderId);
-
-    BigDecimal deliveryCharge = order.getDeliveryCharge() == null
-            ? BigDecimal.ZERO
-            : order.getDeliveryCharge();
-
-    BigDecimal codAmount = itemsSubtotal.add(deliveryCharge);
-
-    order.setTotalAmount(codAmount);
-
-    salesOrderRepository.save(order);
-}
+    private SalesOrder getOrder(Long orderId) {
+        return salesOrderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new RuntimeException("Sales order not found"));
+    }
 
     private Inventory getInventory(Long productId) {
-
         return inventoryRepository.findByProductId(productId)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Inventory not found for product"));
+    }
+
+    private void updateSalesOrderTotal(Long orderId) {
+        SalesOrder order = getOrder(orderId);
+
+        BigDecimal itemsSubtotal =
+                salesItemRepository.calculateTotalBySalesOrderId(orderId);
+
+        BigDecimal deliveryCharge = order.getDeliveryCharge() == null
+                ? BigDecimal.ZERO
+                : order.getDeliveryCharge();
+
+        order.setTotalAmount(itemsSubtotal.add(deliveryCharge));
+
+        salesOrderRepository.save(order);
     }
 }

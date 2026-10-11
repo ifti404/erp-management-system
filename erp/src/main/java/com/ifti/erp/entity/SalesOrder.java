@@ -53,6 +53,9 @@ public class SalesOrder {
     @Size(max = 255, message = "Notes must not exceed 255 characters")
     private String notes;
 
+    @Column(name = "inventory_released", nullable = false)
+    private boolean inventoryReleased = false;
+
 
 
     public String getCourier() {
@@ -124,5 +127,12 @@ public class SalesOrder {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+    public boolean isInventoryReleased() {
+    return inventoryReleased;
+    }
+
+    public void setInventoryReleased(boolean inventoryReleased) {
+    this.inventoryReleased = inventoryReleased;
     }
 }

@@ -38,7 +38,14 @@ type SalesItem = {
   subtotal: number;
 };
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const STATUSES = [
+  'PENDING',
+  'CONFIRMED',
+  'SHIPPED',
+  'DELIVERED',
+  'CANCELLED',
+  'RETURNED',
+];
 
 const inputClass =
   'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring';
@@ -381,6 +388,8 @@ export default function SalesPage() {
         return 'bg-blue-100 text-blue-700';
       case 'CONFIRMED':
         return 'bg-yellow-100 text-yellow-800';
+      case 'RETURNED':
+        return 'bg-purple-100 text-purple-700';
       default:
         return 'bg-muted text-muted-foreground';
     }

@@ -38,22 +38,18 @@ public class SalesOrderController {
         return salesOrderService.createSalesOrder(salesOrder);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<SalesOrder> updateSalesOrder(
-            @PathVariable Long id,
-           @Valid @RequestBody SalesOrder salesOrderDetails) {
+  @PutMapping("/{id}")
+public ResponseEntity<SalesOrder> updateSalesOrder(
+        @PathVariable Long id,
+        @Valid @RequestBody SalesOrder salesOrderDetails) {
 
-        try {
-            return ResponseEntity.ok(
+    return salesOrderService.getSalesOrderById(id)
+            .map(existing -> ResponseEntity.ok(
                     salesOrderService.updateSalesOrder(
-                            id,
-                            salesOrderDetails
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
+                            id, salesOrderDetails)))
+            .orElse(ResponseEntity.notFound().build());
+}
+    
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSalesOrder(@PathVariable Long id) {

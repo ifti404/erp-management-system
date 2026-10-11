@@ -1,3 +1,4 @@
+
 package com.ifti.erp.repository;
 
 import com.ifti.erp.entity.PurchaseItem;
@@ -6,8 +7,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 
-public interface PurchaseItemRepository extends JpaRepository<PurchaseItem, Long> {
+public interface PurchaseItemRepository
+        extends JpaRepository<PurchaseItem, Long> {
 
     @Query("""
         SELECT COALESCE(SUM(p.subtotal), 0)
@@ -17,4 +20,6 @@ public interface PurchaseItemRepository extends JpaRepository<PurchaseItem, Long
     BigDecimal calculateTotalByPurchaseOrderId(
             @Param("purchaseOrderId") Long purchaseOrderId
     );
+
+    List<PurchaseItem> findByPurchaseOrderId(Long purchaseOrderId);
 }
