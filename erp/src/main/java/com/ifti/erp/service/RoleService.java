@@ -11,9 +11,11 @@ import java.util.Optional;
 public class RoleService {
 
     private final RoleRepository roleRepository;
+    private final AuditService auditService;
 
-    public RoleService(RoleRepository roleRepository) {
+    public RoleService(RoleRepository roleRepository, AuditService auditService) {
         this.roleRepository = roleRepository;
+        this.auditService = auditService;
     }
 
     public List<Role> getAllRoles() {
@@ -25,19 +27,40 @@ public class RoleService {
     }
 
     public Role createRole(Role role) {
-        return roleRepository.save(role);
+        if (roleRepository.findFirstByNameIgnoreCase(role.getName()).isPresent()) {
+            throw new IllegalArgumentException("A role with this name already exists");
+        }
+        Role saved = roleRepository.save(role);
+        auditService.record("CREATED", "ROLE", saved.getId(), "name=" + saved.getName());
+        return saved;
     }
 
     public Role updateRole(Long id, Role roleDetails) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
+        if ("ADMIN".equalsIgnoreCase(role.getName())) {
+            throw new IllegalArgumentException("The ADMIN role name is protected");
+        }
+        if (roleRepository.findFirstByNameIgnoreCase(roleDetails.getName())
+                .filter(existing -> !existing.getId().equals(id)).isPresent()) {
+            throw new IllegalArgumentException("A role with this name already exists");
+        }
+
         role.setName(roleDetails.getName());
 
-        return roleRepository.save(role);
+        Role saved = roleRepository.save(role);
+        auditService.record("UPDATED", "ROLE", id, "name=" + saved.getName());
+        return saved;
     }
 
     public void deleteRole(Long id) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        if ("ADMIN".equalsIgnoreCase(role.getName())) {
+            throw new IllegalArgumentException("The ADMIN role cannot be deleted");
+        }
+        auditService.record("DELETED", "ROLE", id, "name=" + role.getName());
         roleRepository.deleteById(id);
     }
 }

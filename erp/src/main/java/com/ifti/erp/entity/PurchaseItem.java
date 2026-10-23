@@ -38,6 +38,11 @@ public class PurchaseItem {
     @Column(nullable = false, precision = 12, scale = 2)
     @DecimalMin(value = "0.0", message = "Subtotal cannot be negative")
     private BigDecimal subtotal;
+    @Column(name = "received_quantity", nullable = false)
+    @NotNull(message = "Received quantity is required")
+    @Min(value = 0, message = "Received quantity cannot be negative")
+    private Integer receivedQuantity = 0;
+
 
     public PurchaseItem() {
     }
@@ -85,4 +90,15 @@ public class PurchaseItem {
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
     }
+    public Integer getReceivedQuantity() {
+    return receivedQuantity;
+}
+
+public void setReceivedQuantity(Integer receivedQuantity) {
+    this.receivedQuantity = receivedQuantity;
+}
+
+    public Integer getRemainingQuantity() {
+    return quantity - receivedQuantity;
+}
 }

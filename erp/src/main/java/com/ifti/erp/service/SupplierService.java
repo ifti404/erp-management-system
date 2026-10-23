@@ -3,6 +3,7 @@ package com.ifti.erp.service;
 import com.ifti.erp.entity.Supplier;
 import com.ifti.erp.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,9 +12,11 @@ import java.util.Optional;
 public class SupplierService {
 
     private final SupplierRepository supplierRepository;
+    private final AuditService auditService;
 
-    public SupplierService(SupplierRepository supplierRepository) {
+    public SupplierService(SupplierRepository supplierRepository, AuditService auditService) {
         this.supplierRepository = supplierRepository;
+        this.auditService = auditService;
     }
 
     public List<Supplier> getAllSuppliers() {
@@ -24,10 +27,14 @@ public class SupplierService {
         return supplierRepository.findById(id);
     }
 
+    @Transactional
     public Supplier createSupplier(Supplier supplier) {
-        return supplierRepository.save(supplier);
+        Supplier saved = supplierRepository.save(supplier);
+        auditService.record("CREATED", "SUPPLIER", saved.getId(), "name=" + saved.getName());
+        return saved;
     }
 
+    @Transactional
     public Supplier updateSupplier(Long id, Supplier supplierDetails) {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
@@ -37,10 +44,15 @@ public class SupplierService {
         supplier.setEmail(supplierDetails.getEmail());
         supplier.setAddress(supplierDetails.getAddress());
 
-        return supplierRepository.save(supplier);
+        Supplier saved = supplierRepository.save(supplier);
+        auditService.record("UPDATED", "SUPPLIER", id, "name=" + saved.getName());
+        return saved;
     }
 
+    @Transactional
     public void deleteSupplier(Long id) {
+        String name = supplierRepository.findById(id).map(Supplier::getName).orElse("unknown");
+        auditService.record("DELETED", "SUPPLIER", id, "name=" + name);
         supplierRepository.deleteById(id);
     }
 }

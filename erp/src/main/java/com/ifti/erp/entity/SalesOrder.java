@@ -3,6 +3,7 @@ package com.ifti.erp.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,9 @@ public class SalesOrder {
     @Column(name = "order_date", nullable = false)
     @NotNull(message = "Order date is required")
     private LocalDateTime orderDate;
+
+    @Column(name = "due_date")
+    private LocalDate dueDate;
 
     @Column(nullable = false, length = 20)
     @NotBlank(message = "Status is required")
@@ -52,6 +56,9 @@ public class SalesOrder {
     @Column(length = 255)
     @Size(max = 255, message = "Notes must not exceed 255 characters")
     private String notes;
+
+    @Column(name = "inventory_released", nullable = false)
+    private boolean inventoryReleased = false;
 
 
 
@@ -94,6 +101,9 @@ public class SalesOrder {
         this.orderDate = orderDate;
     }
 
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+
     public String getStatus() {
         return status;
     }
@@ -124,5 +134,12 @@ public class SalesOrder {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+    public boolean isInventoryReleased() {
+    return inventoryReleased;
+    }
+
+    public void setInventoryReleased(boolean inventoryReleased) {
+    this.inventoryReleased = inventoryReleased;
     }
 }

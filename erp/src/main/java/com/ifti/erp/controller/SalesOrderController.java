@@ -41,18 +41,12 @@ public class SalesOrderController {
     @PutMapping("/{id}")
     public ResponseEntity<SalesOrder> updateSalesOrder(
             @PathVariable Long id,
-           @Valid @RequestBody SalesOrder salesOrderDetails) {
+            @Valid @RequestBody SalesOrder salesOrderDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    salesOrderService.updateSalesOrder(
-                            id,
-                            salesOrderDetails
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return salesOrderService.getSalesOrderById(id)
+                .map(existing -> ResponseEntity.ok(
+                        salesOrderService.updateSalesOrder(id, salesOrderDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

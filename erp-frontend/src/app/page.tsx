@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
+import Link from 'next/link';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Boxes, Package, Wallet } from 'lucide-react';
 
-const API = 'http://localhost:8080/api';
+const API = API_BASE;
 
 type Product = {
   id: number;
@@ -25,6 +28,7 @@ type SalesOrder = {
     name: string;
   };
   orderDate: string;
+  dueDate: string | null;
   status: string;
   totalAmount: number;
 };
@@ -35,6 +39,7 @@ type PurchaseOrder = {
     name: string;
   };
   orderDate: string;
+  dueDate: string | null;
   status: string;
   totalAmount: number;
 };
@@ -51,34 +56,40 @@ type Payment = {
   };
 };
 
+type DashboardData = {
+  products: Product[];
+  inventory: Inventory[];
+  salesOrders: SalesOrder[];
+  purchaseOrders: PurchaseOrder[];
+  payments: Payment[];
+  returns: { salesOrderId: number; returnAmount: number }[];
+};
+
 export default function Dashboard() {
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [returns, setReturns] = useState<{ salesOrderId: number; returnAmount: number }[]>([]);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  async function loadDashboard() {
-    try {
-      setError('');
-
+  async function loadDashboard(): Promise<DashboardData> {
       const [
         productsResponse,
         inventoryResponse,
         salesResponse,
         purchaseResponse,
         paymentsResponse,
+        returnsResponse,
       ] = await Promise.all([
-        fetch(`${API}/products`),
-        fetch(`${API}/inventory`),
-        fetch(`${API}/sales-orders`),
-        fetch(`${API}/purchase-orders`),
-        fetch(`${API}/payments`),
+        apiFetch(`${API}/products`),
+        apiFetch(`${API}/inventory`),
+        apiFetch(`${API}/sales-orders`),
+        apiFetch(`${API}/purchase-orders`),
+        apiFetch(`${API}/payments`),
+        apiFetch(`${API}/sales-returns`),
       ]);
 
       if (
@@ -86,21 +97,48 @@ export default function Dashboard() {
         !inventoryResponse.ok ||
         !salesResponse.ok ||
         !purchaseResponse.ok ||
-        !paymentsResponse.ok
+        !paymentsResponse.ok || !returnsResponse.ok
       ) {
         throw new Error('Failed to load dashboard data');
       }
 
-      setProducts(await productsResponse.json());
-      setInventory(await inventoryResponse.json());
-      setSalesOrders(await salesResponse.json());
-      setPurchaseOrders(await purchaseResponse.json());
-      setPayments(await paymentsResponse.json());
-    } catch (error) {
-      console.error('Dashboard error:', error);
-      setError('Backend unavailable. Start the ERP server and try again.');
-    }
+      const [productsData, inventoryData, salesData, purchaseData, paymentsData, returnsData] =
+        await Promise.all([
+          productsResponse.json() as Promise<Product[]>,
+          inventoryResponse.json() as Promise<Inventory[]>,
+          salesResponse.json() as Promise<SalesOrder[]>,
+          purchaseResponse.json() as Promise<PurchaseOrder[]>,
+          paymentsResponse.json() as Promise<Payment[]>,
+          returnsResponse.json() as Promise<{ salesOrderId: number; returnAmount: number }[]>,
+        ]);
+
+      return {
+        products: productsData,
+        inventory: inventoryData,
+        salesOrders: salesData,
+        purchaseOrders: purchaseData,
+        payments: paymentsData,
+        returns: returnsData,
+      };
   }
+
+  useEffect(() => {
+    let active = true;
+    loadDashboard().then((data) => {
+      if (active) {
+        setProducts(data.products);
+        setInventory(data.inventory);
+        setSalesOrders(data.salesOrders);
+        setPurchaseOrders(data.purchaseOrders);
+        setPayments(data.payments);
+        setReturns(data.returns);
+      }
+    }).catch((error: unknown) => {
+      console.error('Dashboard error:', error);
+      if (active) setError('Backend unavailable. Start the ERP server and try again.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const totalInventoryUnits = inventory.reduce(
     (total, item) => total + item.quantity,
@@ -113,13 +151,20 @@ export default function Dashboard() {
 
   const outOfStock = inventory.filter((item) => item.quantity === 0);
 
-  const salesReceived = payments
-    .filter((payment) => payment.status === 'PAID' && payment.salesOrder)
-    .reduce((total, payment) => total + payment.amount, 0);
-
-  const purchasesPaid = payments
-    .filter((payment) => payment.status === 'PAID' && payment.purchaseOrder)
-    .reduce((total, payment) => total + payment.amount, 0);
+  const paidBySales = new Map<number, number>();
+  const paidByPurchases = new Map<number, number>();
+  for (const payment of payments.filter((item) => item.status === 'PAID' || item.status === 'REFUNDED')) {
+    if (payment.salesOrder) paidBySales.set(payment.salesOrder.id, (paidBySales.get(payment.salesOrder.id) ?? 0) + (payment.status === 'PAID' ? 1 : -1) * Number(payment.amount));
+    if (payment.purchaseOrder && payment.status === 'PAID') paidByPurchases.set(payment.purchaseOrder.id, (paidByPurchases.get(payment.purchaseOrder.id) ?? 0) + Number(payment.amount));
+  }
+  const returnBySales = new Map<number, number>();
+  for (const entry of returns) returnBySales.set(entry.salesOrderId, (returnBySales.get(entry.salesOrderId) ?? 0) + Number(entry.returnAmount));
+  const salesBalance = (order: SalesOrder) => Math.max(0, Number(order.totalAmount) - (returnBySales.get(order.id) ?? 0) - (paidBySales.get(order.id) ?? 0));
+  const receivable = salesOrders.filter((order) => !['CANCELLED', 'RETURNED'].includes(order.status)).reduce((sum, order) => sum + salesBalance(order), 0);
+  const payable = purchaseOrders.filter((order) => order.status !== 'CANCELLED').reduce((sum, order) => sum + Math.max(0, Number(order.totalAmount) - (paidByPurchases.get(order.id) ?? 0)), 0);
+  const currentDate = new Date();
+  const today = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+  const overdueCount = [...salesOrders.filter((order) => order.dueDate && order.dueDate < today && !['CANCELLED', 'RETURNED'].includes(order.status) && salesBalance(order) > 0.009), ...purchaseOrders.filter((order) => order.dueDate && order.dueDate < today && order.status !== 'CANCELLED' && Math.max(0, Number(order.totalAmount) - (paidByPurchases.get(order.id) ?? 0)) > 0.009)].length;
 
   const recentSales = [...salesOrders]
     .sort(
@@ -157,60 +202,50 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="page-stack">
       {/* ERROR */}
       {error && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div role="alert" className="alert-error">
           {error}
         </div>
       )}
 
       {/* PAGE HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">Overview of your business</p>
-      </div>
+      <header className="page-heading"><div><p className="eyebrow">YOUR BUSINESS AT A GLANCE</p><h1>Overview</h1><p>Orders, money due, and stock that needs attention.</p></div><div className="flex flex-wrap gap-2"><Link href="/sales" className="button-primary"><ArrowUpRight className="size-4"/>New sale</Link><Link href="/purchases" className="button-secondary"><ArrowDownLeft className="size-4"/>New purchase</Link></div></header>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Total Products</p>
-          <p className="mt-2 text-3xl font-bold">{products.length}</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Products</p><span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : products.length}</p><p className="mt-1 text-xs text-muted-foreground">Active catalog items</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Total Inventory Units</p>
-          <p className="mt-2 text-3xl font-bold">{totalInventoryUnits}</p>
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Units in stock</p><span className="grid size-9 place-items-center rounded-xl bg-teal-50 text-teal-700"><Boxes className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : totalInventoryUnits.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Across all products</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Low Stock</p>
-          <p className="mt-2 text-3xl font-bold">{lowStock.length}</p>
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Customers owe</p><span className="grid size-9 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ArrowDownLeft className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${receivable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open sales balances</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Out of Stock</p>
-          <p className="mt-2 text-3xl font-bold">{outOfStock.length}</p>
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Owed to suppliers</p><span className="grid size-9 place-items-center rounded-xl bg-violet-50 text-violet-700"><Wallet className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${payable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open purchase balances</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Sales Received</p>
-          <p className="mt-2 text-3xl font-bold">৳{salesReceived.toFixed(2)}</p>
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Low stock</p><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : lowStock.length}</p><p className="mt-1 text-xs text-muted-foreground">At or below reorder level</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Purchases Paid</p>
-          <p className="mt-2 text-3xl font-bold">৳{purchasesPaid.toFixed(2)}</p>
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Out of stock</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : outOfStock.length}</p><Link href="/inventory" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review inventory</Link>
+        </div>
+
+        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Overdue balances</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : overdueCount}</p><Link href="/statements" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review statements</Link>
         </div>
       </div>
 
+      {overdueCount > 0 && <Link href="/statements" className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><AlertTriangle className="size-5 shrink-0 text-amber-600"/><span><strong>{overdueCount} overdue account{overdueCount === 1 ? '' : 's'} need follow-up.</strong> Open statements to review balances.</span><span className="ml-auto font-semibold">Review →</span></Link>}
+
       {/* RECENT SALES */}
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="border-b px-6 py-4">
-          <h2 className="text-xl font-semibold">Recent Sales Orders</h2>
+      <section className="panel overflow-hidden">
+        <div className="panel-heading">
+          <div><h2>Recent Sales Orders</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Latest sales activity
-          </p>
+          </p></div>
         </div>
 
         {recentSales.length === 0 ? (
@@ -266,12 +301,12 @@ export default function Dashboard() {
       </section>
 
       {/* RECENT PURCHASES */}
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="border-b px-6 py-4">
-          <h2 className="text-xl font-semibold">Recent Purchase Orders</h2>
+      <section className="panel overflow-hidden">
+        <div className="panel-heading">
+          <div><h2>Recent Purchase Orders</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Latest purchasing activity
-          </p>
+          </p></div>
         </div>
 
         {recentPurchases.length === 0 ? (
@@ -327,12 +362,12 @@ export default function Dashboard() {
       </section>
 
       {/* LOW STOCK */}
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="border-b px-6 py-4">
-          <h2 className="text-xl font-semibold">Low Stock Products</h2>
+      <section className="panel overflow-hidden">
+        <div className="panel-heading">
+          <div><h2>Low Stock Products</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Products that need replenishment
-          </p>
+          </p></div>
         </div>
 
         {lowStock.length === 0 ? (

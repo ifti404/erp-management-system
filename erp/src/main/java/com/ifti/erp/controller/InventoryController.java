@@ -39,13 +39,9 @@ public class InventoryController {
             @PathVariable Long id,
             @Valid @RequestBody Inventory inventoryDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    inventoryService.updateInventory(id, inventoryDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return inventoryService.getInventoryById(id)
+                .map(existing -> ResponseEntity.ok(inventoryService.updateInventory(id, inventoryDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

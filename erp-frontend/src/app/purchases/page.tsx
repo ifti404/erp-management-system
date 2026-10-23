@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
+
+const API = API_BASE;
 
 type Supplier = {
   id: number;
@@ -18,6 +21,7 @@ type PurchaseOrder = {
   id: number;
   supplier: Supplier;
   orderDate: string;
+  dueDate: string | null;
   status: string;
   totalAmount: number;
   notes: string | null;
@@ -30,19 +34,26 @@ type PurchaseItem = {
   quantity: number;
   unitCost: number;
   subtotal: number;
+  receivedQuantity: number;
+  remainingQuantity: number;
 };
+type PurchasePayment = { status: string; amount: number; purchaseOrder?: { id: number } };
 
 export default function PurchasesPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [items, setItems] = useState<PurchaseItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [payments, setPayments] = useState<PurchasePayment[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
 
   // Purchase Order form
   const [supplierId, setSupplierId] = useState('');
   const [orderDate, setOrderDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState('PENDING');
   const [notes, setNotes] = useState('');
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -56,7 +67,7 @@ export default function PurchasesPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/purchase-orders');
+      const response = await apiFetch(`${API}/purchase-orders`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch purchase orders');
@@ -72,7 +83,7 @@ export default function PurchasesPage() {
 
   const fetchItems = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/purchase-items');
+      const response = await apiFetch(`${API}/purchase-items`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch purchase items');
@@ -88,7 +99,7 @@ export default function PurchasesPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/suppliers');
+      const response = await apiFetch(`${API}/suppliers`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch suppliers');
@@ -104,7 +115,7 @@ export default function PurchasesPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/products');
+      const response = await apiFetch(`${API}/products`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -118,8 +129,18 @@ export default function PurchasesPage() {
     }
   };
 
+  const fetchPayments = async () => {
+    try {
+      const response = await apiFetch(`${API}/payments`);
+      if (!response.ok) throw new Error('Could not fetch payments');
+      setPayments(await response.json() as PurchasePayment[]);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const refreshData = async () => {
-    await Promise.all([fetchOrders(), fetchItems()]);
+    await Promise.all([fetchOrders(), fetchItems(), fetchPayments()]);
   };
 
   useEffect(() => {
@@ -129,6 +150,7 @@ export default function PurchasesPage() {
         fetchItems(),
         fetchSuppliers(),
         fetchProducts(),
+        fetchPayments(),
       ]);
 
       setLoading(false);
@@ -137,6 +159,16 @@ export default function PurchasesPage() {
     loadData();
   }, []);
 
+  const filteredOrders = orders.filter((order) => {
+    const query = orderSearch.trim().toLowerCase();
+    const matchesSearch = !query || [
+      String(order.id), order.supplier?.name ?? '', order.status, order.notes ?? '',
+    ].some((value) => value.toLowerCase().includes(query));
+    const paid = payments.filter((payment) => payment.status === 'PAID' && payment.purchaseOrder?.id === order.id).reduce((sum, payment) => sum + Number(payment.amount), 0);
+    const outstanding = order.status !== 'CANCELLED' && paid + 0.001 < Number(order.totalAmount);
+    return matchesSearch && (orderStatusFilter === 'ALL' || (orderStatusFilter === 'UNPAID' ? outstanding : order.status === orderStatusFilter));
+  });
+
   // =========================
   // PURCHASE ORDER
   // =========================
@@ -144,6 +176,7 @@ export default function PurchasesPage() {
   const resetOrderForm = () => {
     setSupplierId('');
     setOrderDate('');
+    setDueDate('');
     setStatus('PENDING');
     setNotes('');
     setEditingOrderId(null);
@@ -162,18 +195,19 @@ export default function PurchasesPage() {
         id: Number(supplierId),
       },
       orderDate,
+      dueDate: dueDate || null,
       status,
       notes: notes || null,
     };
 
     try {
       const url = editingOrderId
-        ? `http://localhost:8080/api/purchase-orders/${editingOrderId}`
-        : 'http://localhost:8080/api/purchase-orders';
+        ? `${API}/purchase-orders/${editingOrderId}`
+        : `${API}/purchase-orders`;
 
       const method = editingOrderId ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -201,6 +235,7 @@ export default function PurchasesPage() {
     setEditingOrderId(order.id);
     setSupplierId(String(order.supplier.id));
     setOrderDate(order.orderDate ? order.orderDate.substring(0, 16) : '');
+    setDueDate(order.dueDate ?? '');
     setStatus(order.status);
     setNotes(order.notes || '');
 
@@ -220,8 +255,8 @@ export default function PurchasesPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/purchase-orders/${id}`,
+      const response = await apiFetch(
+        `${API}/purchase-orders/${id}`,
         {
           method: 'DELETE',
         },
@@ -298,12 +333,12 @@ export default function PurchasesPage() {
 
     try {
       const url = editingItemId
-        ? `http://localhost:8080/api/purchase-items/${editingItemId}`
-        : 'http://localhost:8080/api/purchase-items';
+        ? `${API}/purchase-items/${editingItemId}`
+        : `${API}/purchase-items`;
 
       const method = editingItemId ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -352,8 +387,8 @@ export default function PurchasesPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/purchase-items/${id}`,
+      const response = await apiFetch(
+        `${API}/purchase-items/${id}`,
         {
           method: 'DELETE',
         },
@@ -373,6 +408,34 @@ export default function PurchasesPage() {
     }
   };
 
+  const handleReceiveItem = async (item: PurchaseItem) => {
+    if (item.remainingQuantity <= 0) return;
+    const value = window.prompt(
+      `Receive quantity (up to ${item.remainingQuantity}) for ${item.product.name}`,
+      String(item.remainingQuantity),
+    );
+    if (value === null) return;
+    const receiveQuantity = Number(value);
+    if (!Number.isInteger(receiveQuantity) || receiveQuantity < 1 || receiveQuantity > item.remainingQuantity) {
+      alert(`Enter a whole number from 1 to ${item.remainingQuantity}.`);
+      return;
+    }
+    try {
+      const response = await apiFetch(`${API}/purchase-orders/${item.purchaseOrder.id}/receipts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: [{ purchaseItemId: item.id, quantity: receiveQuantity }] }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to receive purchase item');
+      }
+      await refreshData();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to receive purchase item');
+    }
+  };
+
   const inputClass =
     'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
 
@@ -389,22 +452,19 @@ export default function PurchasesPage() {
       return 'bg-blue-100 text-blue-700';
     }
 
+    if (value === 'PARTIALLY_RECEIVED') {
+      return 'bg-amber-100 text-amber-800';
+    }
+
     return 'bg-muted text-muted-foreground';
   };
 
   return (
-    <div>
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Purchases</h1>
-
-        <p className="mt-2 text-muted-foreground">
-          Manage purchase orders, items, and inventory.
-        </p>
-      </div>
+    <div className="page-stack">
+      <header className="page-heading"><div><p className="eyebrow">SUPPLIER OPERATIONS</p><h1>Purchases</h1><p>Manage orders, receive stock, and track supplier balances.</p></div><span className="count-pill">{orders.length} orders</span></header>
 
       {/* Purchase Order Form */}
-      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+      <div className="panel p-5 sm:p-6">
         <div>
           <h2 className="text-xl font-semibold">
             {editingOrderId === null
@@ -454,6 +514,11 @@ export default function PurchasesPage() {
             />
           </div>
 
+          <div>
+            <label className="text-sm font-medium">Payment due date</label>
+            <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className={inputClass} />
+          </div>
+
           {/* Status */}
           <div>
             <label className="text-sm font-medium">Status *</label>
@@ -465,7 +530,12 @@ export default function PurchasesPage() {
             >
               <option value="PENDING">PENDING</option>
               <option value="ORDERED">ORDERED</option>
-              <option value="RECEIVED">RECEIVED</option>
+              <option value="PARTIALLY_RECEIVED" disabled>
+                PARTIALLY RECEIVED
+              </option>
+              <option value="RECEIVED" disabled>
+                RECEIVED
+              </option>
               <option value="CANCELLED">CANCELLED</option>
             </select>
           </div>
@@ -508,14 +578,21 @@ export default function PurchasesPage() {
       </div>
 
       {/* Purchase Orders */}
-      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="panel overflow-hidden">
         <div className="border-b px-6 py-4">
           <h2 className="font-semibold">Purchase Orders</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {orders.length} purchase order
-            {orders.length !== 1 ? 's' : ''} in records.
+            Showing {filteredOrders.length} of {orders.length} purchase order{orders.length !== 1 ? 's' : ''}
           </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input aria-label="Search purchase orders" value={orderSearch} onChange={(event) => setOrderSearch(event.target.value)} placeholder="Search order, supplier, or notes" className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+            <select aria-label="Filter purchase orders by status" value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm sm:w-56">
+              <option value="ALL">All statuses</option>
+              {['PENDING', 'ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'].map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+              <option value="UNPAID">Unpaid / partly paid</option>
+            </select>
+          </div>
         </div>
 
         {loading ? (
@@ -530,6 +607,8 @@ export default function PurchasesPage() {
               Create your first purchase order using the form above.
             </p>
           </div>
+        ) : filteredOrders.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No purchase orders match those filters.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -540,13 +619,15 @@ export default function PurchasesPage() {
                   <th className="px-4 py-3 text-sm font-medium">Order Date</th>
                   <th className="px-4 py-3 text-sm font-medium">Status</th>
                   <th className="px-4 py-3 text-sm font-medium">Total</th>
+                  <th className="px-4 py-3 text-sm font-medium">Paid</th>
+                  <th className="px-4 py-3 text-sm font-medium">Balance</th>
                   <th className="px-4 py-3 text-sm font-medium">Notes</th>
                   <th className="px-4 py-3 text-sm font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr
                     key={order.id}
                     className="border-b last:border-b-0 hover:bg-muted/20"
@@ -577,10 +658,20 @@ export default function PurchasesPage() {
                       ৳{Number(order.totalAmount).toFixed(2)}
                     </td>
 
+                    <td className="px-4 py-3 text-sm">৳{payments.filter((payment) => payment.status === 'PAID' && payment.purchaseOrder?.id === order.id).reduce((sum, payment) => sum + Number(payment.amount), 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold">৳{Math.max(0, Number(order.totalAmount) - payments.filter((payment) => payment.status === 'PAID' && payment.purchaseOrder?.id === order.id).reduce((sum, payment) => sum + Number(payment.amount), 0)).toFixed(2)}</td>
+
                     <td className="px-4 py-3 text-sm">{order.notes || '-'}</td>
 
                     <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => window.open(`/documents?kind=purchase&id=${order.id}`, '_blank', 'noopener,noreferrer')}
+                          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                        >
+                          Print
+                        </button>
                         <button
                           onClick={() => handleEditOrder(order)}
                           className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
@@ -605,7 +696,7 @@ export default function PurchasesPage() {
       </div>
 
       {/* Purchase Item Form */}
-      <div className="mt-8 rounded-lg border bg-card p-6 shadow-sm">
+      <div className="panel p-5 sm:p-6">
         <div>
           <h2 className="text-xl font-semibold">
             {editingItemId === null
@@ -719,7 +810,7 @@ export default function PurchasesPage() {
       </div>
 
       {/* Purchase Items */}
-      <div className="mt-8 overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="panel overflow-hidden">
         <div className="border-b px-6 py-4">
           <h2 className="font-semibold">Purchase Items</h2>
 
@@ -749,7 +840,9 @@ export default function PurchasesPage() {
                   <th className="px-4 py-3 text-sm font-medium">ID</th>
                   <th className="px-4 py-3 text-sm font-medium">Order</th>
                   <th className="px-4 py-3 text-sm font-medium">Product</th>
-                  <th className="px-4 py-3 text-sm font-medium">Quantity</th>
+                  <th className="px-4 py-3 text-sm font-medium">Ordered</th>
+                  <th className="px-4 py-3 text-sm font-medium">Received</th>
+                  <th className="px-4 py-3 text-sm font-medium">Remaining</th>
                   <th className="px-4 py-3 text-sm font-medium">Unit Cost</th>
                   <th className="px-4 py-3 text-sm font-medium">Subtotal</th>
                   <th className="px-4 py-3 text-sm font-medium">Actions</th>
@@ -776,6 +869,10 @@ export default function PurchasesPage() {
 
                     <td className="px-4 py-3 text-sm">{item.quantity}</td>
 
+                    <td className="px-4 py-3 text-sm">{item.receivedQuantity}</td>
+
+                    <td className="px-4 py-3 text-sm">{item.remainingQuantity}</td>
+
                     <td className="px-4 py-3 text-sm">
                       ৳{Number(item.unitCost).toFixed(2)}
                     </td>
@@ -786,6 +883,14 @@ export default function PurchasesPage() {
 
                     <td className="px-4 py-3 text-sm">
                       <div className="flex gap-2">
+                        {item.remainingQuantity > 0 && (
+                          <button
+                            onClick={() => handleReceiveItem(item)}
+                            className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                          >
+                            Receive
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditItem(item)}
                           className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"

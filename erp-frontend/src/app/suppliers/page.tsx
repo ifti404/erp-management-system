@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
 
 type Supplier = {
   id: number;
@@ -14,6 +15,7 @@ type Supplier = {
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -23,7 +25,7 @@ export default function SuppliersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const fetchSuppliers = () => {
-    fetch('http://localhost:8080/api/suppliers')
+    apiFetch(`${API_BASE}/suppliers`)
       .then((response) => response.json())
       .then((data) => {
         setSuppliers(data);
@@ -59,13 +61,13 @@ export default function SuppliersPage() {
 
     const url =
       editingId === null
-        ? 'http://localhost:8080/api/suppliers'
-        : `http://localhost:8080/api/suppliers/${editingId}`;
+        ? `${API_BASE}/suppliers`
+        : `${API_BASE}/suppliers/${editingId}`;
 
     const method = editingId === null ? 'POST' : 'PUT';
 
     try {
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -110,8 +112,8 @@ export default function SuppliersPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/suppliers/${id}`,
+      const response = await apiFetch(
+        `${API_BASE}/suppliers/${id}`,
         {
           method: 'DELETE',
         },
@@ -132,6 +134,11 @@ export default function SuppliersPage() {
 
   const inputClass =
     'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
+  const filteredSuppliers = suppliers.filter((supplier) =>
+    [supplier.name, supplier.phone, supplier.email, supplier.address]
+      .some((value) => value?.toLowerCase().includes(searchTerm.trim().toLowerCase())),
+  );
 
   return (
     <div>
@@ -244,9 +251,9 @@ export default function SuppliersPage() {
           <h2 className="font-semibold">Supplier List</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {suppliers.length} supplier
-            {suppliers.length !== 1 ? 's' : ''} in records.
+            Showing {filteredSuppliers.length} of {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''}
           </p>
+          <input aria-label="Search suppliers" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search name, phone, email, or address" className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm sm:max-w-md" />
         </div>
 
         {loading ? (
@@ -261,6 +268,8 @@ export default function SuppliersPage() {
               Add your first supplier using the form above.
             </p>
           </div>
+        ) : filteredSuppliers.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No suppliers match “{searchTerm}”.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -276,7 +285,7 @@ export default function SuppliersPage() {
               </thead>
 
               <tbody>
-                {suppliers.map((supplier) => (
+                {filteredSuppliers.map((supplier) => (
                   <tr
                     key={supplier.id}
                     className="border-b last:border-b-0 hover:bg-muted/20"

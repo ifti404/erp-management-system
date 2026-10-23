@@ -40,13 +40,9 @@ public class CustomerController {
             @PathVariable Long id,
             @Valid @RequestBody Customer customerDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    customerService.updateCustomer(id, customerDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return customerService.getCustomerById(id)
+                .map(existing -> ResponseEntity.ok(customerService.updateCustomer(id, customerDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

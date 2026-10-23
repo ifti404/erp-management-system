@@ -20,6 +20,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("salesOrderId") Long salesOrderId
     );
 
+    @Query("select coalesce(sum(case when p.status = 'PAID' then p.amount when p.status = 'REFUNDED' then -p.amount else 0 end), 0) from Payment p where p.salesOrder.id = :salesOrderId")
+    BigDecimal calculateNetCollectedAmountBySalesOrderId(@Param("salesOrderId") Long salesOrderId);
+
     @Query("""
         SELECT COALESCE(SUM(p.amount), 0)
         FROM Payment p

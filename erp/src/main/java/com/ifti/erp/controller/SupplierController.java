@@ -40,13 +40,9 @@ public class SupplierController {
             @PathVariable Long id,
             @Valid @RequestBody Supplier supplierDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    supplierService.updateSupplier(id, supplierDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return supplierService.getSupplierById(id)
+                .map(existing -> ResponseEntity.ok(supplierService.updateSupplier(id, supplierDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

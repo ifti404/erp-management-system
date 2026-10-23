@@ -3,6 +3,7 @@ package com.ifti.erp.service;
 import com.ifti.erp.entity.Inventory;
 import com.ifti.erp.entity.PurchaseItem;
 import com.ifti.erp.entity.PurchaseOrder;
+import com.ifti.erp.dto.ReceivePurchaseItemsRequest;
 import com.ifti.erp.repository.InventoryRepository;
 import com.ifti.erp.repository.PurchaseItemRepository;
 import com.ifti.erp.repository.PurchaseOrderRepository;
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Set;
 
 @Service
 public class PurchaseItemService {
@@ -20,15 +23,20 @@ public class PurchaseItemService {
     private final PurchaseItemRepository purchaseItemRepository;
     private final InventoryRepository inventoryRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final InventoryMovementService movementService;
+    private final AuditService auditService;
 
     public PurchaseItemService(
             PurchaseItemRepository purchaseItemRepository,
             InventoryRepository inventoryRepository,
-            PurchaseOrderRepository purchaseOrderRepository) {
+            PurchaseOrderRepository purchaseOrderRepository,
+            InventoryMovementService movementService, AuditService auditService) {
 
         this.purchaseItemRepository = purchaseItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
+        this.movementService = movementService;
+        this.auditService = auditService;
     }
 
     public List<PurchaseItem> getAllPurchaseItems() {
@@ -40,21 +48,63 @@ public class PurchaseItemService {
     }
 
     @Transactional
+    public PurchaseOrder receiveItems(Long orderId, ReceivePurchaseItemsRequest request) {
+        PurchaseOrder order = purchaseOrderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+        ensureOrderCanBeEdited(order);
+
+        Set<Long> seenItemIds = new HashSet<>();
+        List<PurchaseItem> receivingItems = new ArrayList<>();
+        for (ReceivePurchaseItemsRequest.Line line : request.items()) {
+            if (!seenItemIds.add(line.purchaseItemId())) {
+                throw new RuntimeException("A purchase item can appear only once per receipt");
+            }
+            PurchaseItem item = purchaseItemRepository.findByIdForUpdate(line.purchaseItemId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Purchase item not found: " + line.purchaseItemId()));
+            if (!item.getPurchaseOrder().getId().equals(orderId)) {
+                throw new RuntimeException("Purchase item does not belong to this order");
+            }
+            if (line.quantity() > item.getRemainingQuantity()) {
+                throw new RuntimeException("Received quantity exceeds remaining quantity for item " + item.getId());
+            }
+            receivingItems.add(item);
+        }
+
+        for (int index = 0; index < request.items().size(); index++) {
+            ReceivePurchaseItemsRequest.Line line = request.items().get(index);
+            PurchaseItem item = receivingItems.get(index);
+            Inventory inventory = inventoryRepository.findByProductIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() -> new RuntimeException("Inventory not found for product " + item.getProduct().getId()));
+            inventory.setQuantity(inventory.getQuantity() + line.quantity());
+            inventory.setUpdatedAt(java.time.LocalDateTime.now());
+            inventoryRepository.save(inventory);
+            movementService.record(item.getProduct(), "PURCHASE_RECEIPT", line.quantity(),
+                    inventory.getQuantity(), "PURCHASE_ORDER", orderId, null);
+            item.setReceivedQuantity(item.getReceivedQuantity() + line.quantity());
+            purchaseItemRepository.save(item);
+        }
+
+        List<PurchaseItem> items = purchaseItemRepository.findByPurchaseOrderId(orderId);
+        boolean allReceived = !items.isEmpty() && items.stream()
+                .allMatch(item -> item.getRemainingQuantity() == 0);
+        boolean anyReceived = items.stream().anyMatch(item -> item.getReceivedQuantity() > 0);
+        order.setStatus(allReceived ? "RECEIVED" : anyReceived ? "PARTIALLY_RECEIVED" : order.getStatus());
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
+        String received = request.items().stream().map(line -> line.purchaseItemId() + ":+" + line.quantity())
+                .collect(java.util.stream.Collectors.joining(", "));
+        auditService.record("RECEIVED", "PURCHASE_ORDER", orderId, received + ", status=" + savedOrder.getStatus());
+        return savedOrder;
+    }
+
+    @Transactional
     public PurchaseItem createPurchaseItem(PurchaseItem purchaseItem) {
-
-        Inventory inventory = getInventory(
-                purchaseItem.getProduct().getId()
-        );
-
-        // Add purchased quantity to inventory
-        inventory.setQuantity(
-                inventory.getQuantity()
-                        + purchaseItem.getQuantity()
-        );
-
-        inventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(inventory);
+        PurchaseOrder order = purchaseOrderRepository.findByIdForUpdate(
+                        purchaseItem.getPurchaseOrder().getId())
+                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+        ensureOrderCanBeEdited(order);
+        purchaseItem.setPurchaseOrder(order);
+        purchaseItem.setReceivedQuantity(0);
 
         // Calculate subtotal
         purchaseItem.setSubtotal(
@@ -74,6 +124,7 @@ public class PurchaseItemService {
                 purchaseItem.getPurchaseOrder().getId()
         );
 
+        auditService.record("CREATED", "PURCHASE_ITEM", savedItem.getId(), "purchase order #" + order.getId() + ", quantity=" + savedItem.getQuantity() + ", unit cost=" + savedItem.getUnitCost());
         return savedItem;
     }
 
@@ -83,7 +134,7 @@ public class PurchaseItemService {
             PurchaseItem purchaseItemDetails) {
 
         PurchaseItem existingItem =
-                purchaseItemRepository.findById(id)
+                purchaseItemRepository.findByIdForUpdate(id)
                         .orElseThrow(() ->
                                 new RuntimeException(
                                         "Purchase item not found"));
@@ -94,41 +145,15 @@ public class PurchaseItemService {
         Long newOrderId =
                 purchaseItemDetails.getPurchaseOrder().getId();
 
-        // Remove old quantity from old inventory
-        Inventory oldInventory = getInventory(
-                existingItem.getProduct().getId()
-        );
-
-        if (oldInventory.getQuantity()
-                < existingItem.getQuantity()) {
-
-            throw new RuntimeException(
-                    "Cannot update purchase item because inventory would become negative"
-            );
+        PurchaseOrder oldOrder = purchaseOrderRepository.findByIdForUpdate(oldOrderId)
+                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+        PurchaseOrder newOrder = purchaseOrderRepository.findByIdForUpdate(newOrderId)
+                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+        ensureOrderCanBeEdited(oldOrder);
+        ensureOrderCanBeEdited(newOrder);
+        if (existingItem.getReceivedQuantity() > 0) {
+            throw new RuntimeException("Received purchase items cannot be edited");
         }
-
-        oldInventory.setQuantity(
-                oldInventory.getQuantity()
-                        - existingItem.getQuantity()
-        );
-
-        oldInventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(oldInventory);
-
-        // Add new quantity to new inventory
-        Inventory newInventory = getInventory(
-                purchaseItemDetails.getProduct().getId()
-        );
-
-        newInventory.setQuantity(
-                newInventory.getQuantity()
-                        + purchaseItemDetails.getQuantity()
-        );
-
-        newInventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(newInventory);
 
         // Update item fields
         existingItem.setPurchaseOrder(
@@ -146,6 +171,7 @@ public class PurchaseItemService {
         existingItem.setUnitCost(
                 purchaseItemDetails.getUnitCost()
         );
+        existingItem.setReceivedQuantity(0);
 
         // Recalculate subtotal
         existingItem.setSubtotal(
@@ -167,6 +193,7 @@ public class PurchaseItemService {
             updatePurchaseOrderTotal(newOrderId);
         }
 
+        auditService.record("UPDATED", "PURCHASE_ITEM", id, "order #" + oldOrderId + " -> #" + newOrderId + ", quantity=" + updatedItem.getQuantity() + ", unit cost=" + updatedItem.getUnitCost());
         return updatedItem;
     }
 
@@ -174,7 +201,7 @@ public class PurchaseItemService {
     public void deletePurchaseItem(Long id) {
 
         PurchaseItem purchaseItem =
-                purchaseItemRepository.findById(id)
+                purchaseItemRepository.findByIdForUpdate(id)
                         .orElseThrow(() ->
                                 new RuntimeException(
                                         "Purchase item not found"));
@@ -182,29 +209,11 @@ public class PurchaseItemService {
         Long orderId =
                 purchaseItem.getPurchaseOrder().getId();
 
-        Inventory inventory = getInventory(
-                purchaseItem.getProduct().getId()
-        );
-
-        // Prevent inventory from becoming negative
-        if (inventory.getQuantity()
-                < purchaseItem.getQuantity()) {
-
-            throw new RuntimeException(
-                    "Cannot remove purchase item because inventory would become negative"
-            );
+        if (purchaseItem.getReceivedQuantity() > 0) {
+            throw new RuntimeException("Received purchase items cannot be deleted");
         }
 
-        // Remove purchased quantity from inventory
-        inventory.setQuantity(
-                inventory.getQuantity()
-                        - purchaseItem.getQuantity()
-        );
-
-        inventory.setUpdatedAt(LocalDateTime.now());
-
-        inventoryRepository.save(inventory);
-
+        auditService.record("DELETED", "PURCHASE_ITEM", id, "purchase order #" + orderId + ", quantity=" + purchaseItem.getQuantity() + ", unit cost=" + purchaseItem.getUnitCost());
         purchaseItemRepository.delete(purchaseItem);
 
         // Recalculate purchase order total
@@ -228,11 +237,10 @@ public class PurchaseItemService {
         purchaseOrderRepository.save(order);
     }
 
-    private Inventory getInventory(Long productId) {
-
-        return inventoryRepository.findByProductId(productId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Inventory not found for product"));
+    private void ensureOrderCanBeEdited(PurchaseOrder order) {
+        if ("CANCELLED".equalsIgnoreCase(order.getStatus())
+                || "RECEIVED".equalsIgnoreCase(order.getStatus())) {
+            throw new RuntimeException("Cancelled or received purchase orders cannot be edited");
+        }
     }
 }

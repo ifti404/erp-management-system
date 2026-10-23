@@ -49,13 +49,9 @@ public class PaymentController {
             @PathVariable Long id,
            @Valid @RequestBody Payment paymentDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    paymentService.updatePayment(id, paymentDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return paymentService.getPaymentById(id)
+                .map(existing -> ResponseEntity.ok(paymentService.updatePayment(id, paymentDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

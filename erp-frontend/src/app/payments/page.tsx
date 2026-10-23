@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
 
-const API = 'http://localhost:8080/api';
+const API = API_BASE;
 
 type SalesOrder = {
   id: number;
@@ -31,8 +32,15 @@ type Payment = {
   notes?: string;
 };
 
+type PaymentsPageData = {
+  payments: Payment[];
+  salesOrders: SalesOrder[];
+  purchaseOrders: PurchaseOrder[];
+};
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
 
@@ -46,29 +54,63 @@ export default function PaymentsPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<PaymentsPageData> => {
     const [paymentsResponse, salesOrdersResponse, purchaseOrdersResponse] =
       await Promise.all([
-        fetch(`${API}/payments`),
-        fetch(`${API}/payments/unpaid-sales-orders`),
-        fetch(`${API}/payments/unpaid-purchase-orders`),
+        apiFetch(`${API}/payments`),
+        apiFetch(`${API}/payments/unpaid-sales-orders`),
+        apiFetch(`${API}/payments/unpaid-purchase-orders`),
       ]);
+
+    if (!paymentsResponse.ok || !salesOrdersResponse.ok || !purchaseOrdersResponse.ok) {
+      throw new Error('Could not load payments. Check that the backend is running.');
+    }
 
     const [paymentsData, salesOrdersData, purchaseOrdersData] =
       await Promise.all([
-        paymentsResponse.json(),
-        salesOrdersResponse.json(),
-        purchaseOrdersResponse.json(),
+        paymentsResponse.json() as Promise<Payment[]>,
+        salesOrdersResponse.json() as Promise<SalesOrder[]>,
+        purchaseOrdersResponse.json() as Promise<PurchaseOrder[]>,
       ]);
-
-    setPayments(paymentsData);
-    setSalesOrders(salesOrdersData);
-    setPurchaseOrders(purchaseOrdersData);
+    return {
+      payments: paymentsData,
+      salesOrders: salesOrdersData,
+      purchaseOrders: purchaseOrdersData,
+    };
   };
 
+  const filteredPayments = payments.filter((payment) => {
+    const orderRef = payment.salesOrder
+      ? `sales ${payment.salesOrder.id} ${payment.salesOrder.customer?.name ?? ''}`
+      : payment.purchaseOrder
+        ? `purchase ${payment.purchaseOrder.id} ${payment.purchaseOrder.supplier?.name ?? ''}`
+        : '';
+    const searchable = [payment.id.toString(), payment.paymentMethod, payment.status, payment.notes ?? '', orderRef]
+      .join(' ')
+      .toLowerCase();
+    return searchable.includes(searchTerm.trim().toLowerCase());
+  });
+
   useEffect(() => {
-    fetchData();
+    let active = true;
+    fetchData().then((data) => {
+      if (active) {
+        setPayments(data.payments);
+        setSalesOrders(data.salesOrders);
+        setPurchaseOrders(data.purchaseOrders);
+      }
+    }).catch((error: unknown) => {
+      console.error(error);
+    });
+    return () => { active = false; };
   }, []);
+
+  const refreshData = async () => {
+    const data = await fetchData();
+    setPayments(data.payments);
+    setSalesOrders(data.salesOrders);
+    setPurchaseOrders(data.purchaseOrders);
+  };
 
   const resetForm = () => {
     setPaymentDate('');
@@ -108,7 +150,7 @@ export default function PaymentsPage() {
 
     const method = editingId ? 'PUT' : 'POST';
 
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +166,7 @@ export default function PaymentsPage() {
     }
 
     resetForm();
-    await fetchData();
+    await refreshData();
   };
 
   const editPayment = (payment: Payment) => {
@@ -155,7 +197,7 @@ export default function PaymentsPage() {
       return;
     }
 
-    const response = await fetch(`${API}/payments/${id}`, {
+    const response = await apiFetch(`${API}/payments/${id}`, {
       method: 'DELETE',
     });
 
@@ -167,7 +209,7 @@ export default function PaymentsPage() {
       return;
     }
 
-    await fetchData();
+    await refreshData();
   };
 
   const inputClass =
@@ -189,17 +231,11 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* PAGE HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-        <p className="mt-1 text-muted-foreground">
-          Manage sales and purchase payments
-        </p>
-      </div>
+    <div className="page-stack">
+      <header className="page-heading"><div><p className="eyebrow">CASH & SETTLEMENTS</p><h1>Payments</h1><p>Record payments and follow balances attached to orders.</p></div><span className="count-pill">{payments.length} payments</span></header>
 
       {/* PAYMENT FORM */}
-      <section className="rounded-lg border bg-card p-6 shadow-sm">
+      <section className="panel p-5 sm:p-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold">
             {editingId ? 'Edit Payment' : 'Add Payment'}
@@ -264,7 +300,6 @@ export default function PaymentsPage() {
               <option value="PENDING">PENDING</option>
               <option value="PAID">PAID</option>
               <option value="FAILED">FAILED</option>
-              <option value="REFUNDED">REFUNDED</option>
             </select>
           </div>
 
@@ -343,12 +378,13 @@ export default function PaymentsPage() {
       </section>
 
       {/* PAYMENTS TABLE */}
-      <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <section className="panel overflow-hidden">
         <div className="border-b px-6 py-4">
           <h2 className="text-xl font-semibold">Payment Records</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {payments.length} payment{payments.length === 1 ? '' : 's'} recorded
+            Showing {filteredPayments.length} of {payments.length} payment{payments.length === 1 ? '' : 's'}
           </p>
+          <input aria-label="Search payments" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by payment, order, customer, or status" className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm sm:max-w-md" />
         </div>
 
         <div className="overflow-x-auto">
@@ -367,7 +403,7 @@ export default function PaymentsPage() {
             </thead>
 
             <tbody>
-              {payments.map((payment) => (
+              {filteredPayments.map((payment) => (
                 <tr
                   key={payment.id}
                   className="border-b last:border-0 transition-colors hover:bg-muted/30"
@@ -409,6 +445,13 @@ export default function PaymentsPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
+                        type="button"
+                        onClick={() => window.open(`/documents?kind=payment&id=${payment.id}`, '_blank', 'noopener,noreferrer')}
+                        className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                      >
+                        Receipt
+                      </button>
+                      <button
                         onClick={() => editPayment(payment)}
                         className="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
                       >
@@ -425,6 +468,7 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ))}
+              {filteredPayments.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">{payments.length === 0 ? 'No payment records yet.' : `No payments match “${searchTerm}”.`}</td></tr>}
 
               {payments.length === 0 && (
                 <tr>

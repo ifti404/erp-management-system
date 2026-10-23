@@ -43,17 +43,10 @@ public class PurchaseItemController {
     public ResponseEntity<PurchaseItem> updatePurchaseItem(
             @PathVariable Long id,
            @Valid @RequestBody PurchaseItem purchaseItemDetails) {
-
-        try {
-            return ResponseEntity.ok(
-                    purchaseItemService.updatePurchaseItem(
-                            id,
-                            purchaseItemDetails
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return purchaseItemService.getPurchaseItemById(id)
+                .map(existing -> ResponseEntity.ok(
+                        purchaseItemService.updatePurchaseItem(id, purchaseItemDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

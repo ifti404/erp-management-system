@@ -39,13 +39,9 @@ public class RoleController {
             @PathVariable Long id,
            @Valid @RequestBody Role roleDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    roleService.updateRole(id, roleDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return roleService.getRoleById(id)
+                .map(existing -> ResponseEntity.ok(roleService.updateRole(id, roleDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

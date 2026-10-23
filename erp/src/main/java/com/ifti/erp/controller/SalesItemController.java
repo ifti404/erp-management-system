@@ -43,16 +43,9 @@ public class SalesItemController {
             @PathVariable Long id,
           @Valid  @RequestBody SalesItem salesItemDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    salesItemService.updateSalesItem(
-                            id,
-                            salesItemDetails
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return salesItemService.getSalesItemById(id)
+                .map(existing -> ResponseEntity.ok(salesItemService.updateSalesItem(id, salesItemDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

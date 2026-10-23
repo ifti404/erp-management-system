@@ -1,6 +1,8 @@
 package com.ifti.erp.controller;
 
 import com.ifti.erp.entity.PurchaseOrder;
+import com.ifti.erp.dto.ReceivePurchaseItemsRequest;
+import com.ifti.erp.service.PurchaseItemService;
 import com.ifti.erp.service.PurchaseOrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +16,18 @@ import java.util.List;
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
+    private final PurchaseItemService purchaseItemService;
 
-    public PurchaseOrderController(PurchaseOrderService purchaseOrderService) {
+    public PurchaseOrderController(PurchaseOrderService purchaseOrderService,
+                                   PurchaseItemService purchaseItemService) {
         this.purchaseOrderService = purchaseOrderService;
+        this.purchaseItemService = purchaseItemService;
+    }
+
+    @PostMapping("/{id}/receipts")
+    public PurchaseOrder receiveItems(@PathVariable Long id,
+            @Valid @RequestBody ReceivePurchaseItemsRequest request) {
+        return purchaseItemService.receiveItems(id, request);
     }
 
     @GetMapping
@@ -44,17 +55,10 @@ public class PurchaseOrderController {
     public ResponseEntity<PurchaseOrder> updatePurchaseOrder(
             @PathVariable Long id,
            @Valid @RequestBody PurchaseOrder purchaseOrderDetails) {
-
-        try {
-            return ResponseEntity.ok(
-                    purchaseOrderService.updatePurchaseOrder(
-                            id,
-                            purchaseOrderDetails
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return purchaseOrderService.getPurchaseOrderById(id)
+                .map(existing -> ResponseEntity.ok(
+                        purchaseOrderService.updatePurchaseOrder(id, purchaseOrderDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

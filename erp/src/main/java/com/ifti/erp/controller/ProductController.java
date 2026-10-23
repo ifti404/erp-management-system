@@ -40,13 +40,9 @@ public class ProductController {
             @PathVariable Long id,
             @Valid @RequestBody Product productDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    productService.updateProduct(id, productDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return productService.getProductById(id)
+                .map(existing -> ResponseEntity.ok(productService.updateProduct(id, productDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

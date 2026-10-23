@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
 
 type Customer = {
   id: number;
@@ -14,6 +15,7 @@ type Customer = {
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -23,7 +25,7 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const fetchCustomers = () => {
-    fetch('http://localhost:8080/api/customers')
+    apiFetch(`${API_BASE}/customers`)
       .then((response) => response.json())
       .then((data) => {
         setCustomers(data);
@@ -59,13 +61,13 @@ export default function CustomersPage() {
 
     const url =
       editingId === null
-        ? 'http://localhost:8080/api/customers'
-        : `http://localhost:8080/api/customers/${editingId}`;
+        ? `${API_BASE}/customers`
+        : `${API_BASE}/customers/${editingId}`;
 
     const method = editingId === null ? 'POST' : 'PUT';
 
     try {
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -110,8 +112,8 @@ export default function CustomersPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/customers/${id}`,
+      const response = await apiFetch(
+        `${API_BASE}/customers/${id}`,
         {
           method: 'DELETE',
         },
@@ -132,6 +134,11 @@ export default function CustomersPage() {
 
   const inputClass =
     'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
+  const filteredCustomers = customers.filter((customer) =>
+    [customer.name, customer.phone, customer.email, customer.address]
+      .some((value) => value?.toLowerCase().includes(searchTerm.trim().toLowerCase())),
+  );
 
   return (
     <div>
@@ -244,9 +251,9 @@ export default function CustomersPage() {
           <h2 className="font-semibold">Customer List</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {customers.length} customer
-            {customers.length !== 1 ? 's' : ''} in records.
+            Showing {filteredCustomers.length} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
           </p>
+          <input aria-label="Search customers" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search name, phone, email, or address" className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm sm:max-w-md" />
         </div>
 
         {loading ? (
@@ -261,6 +268,8 @@ export default function CustomersPage() {
               Add your first customer using the form above.
             </p>
           </div>
+        ) : filteredCustomers.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No customers match “{searchTerm}”.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -275,7 +284,7 @@ export default function CustomersPage() {
               </thead>
 
               <tbody>
-                {customers.map((customer) => (
+                {filteredCustomers.map((customer) => (
                   <tr
                     key={customer.id}
                     className="border-b last:border-b-0 hover:bg-muted/20"

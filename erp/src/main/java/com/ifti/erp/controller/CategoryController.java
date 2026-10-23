@@ -41,13 +41,9 @@ public class CategoryController {
             @PathVariable Long id,
             @Valid @RequestBody Category categoryDetails) {
 
-        try {
-            return ResponseEntity.ok(
-                    categoryService.updateCategory(id, categoryDetails)
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return categoryService.getCategoryById(id)
+                .map(existing -> ResponseEntity.ok(categoryService.updateCategory(id, categoryDetails)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")

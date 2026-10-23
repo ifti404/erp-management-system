@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
 
-const API = 'http://localhost:8080/api';
+const API = API_BASE;
 
 type Customer = {
   id: number;
@@ -21,6 +22,7 @@ type SalesOrder = {
   id: number;
   customer: Customer;
   orderDate: string;
+  dueDate: string | null;
   status: string;
   totalAmount: number;
   deliveryCharge: number;
@@ -38,7 +40,23 @@ type SalesItem = {
   subtotal: number;
 };
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+type SalesPageData = {
+  orders: SalesOrder[];
+  items: SalesItem[];
+  customers: Customer[];
+  products: Product[];
+  payments: { status: string; amount: number; salesOrder?: { id: number } }[];
+  returns: { salesOrderId: number; returnAmount: number }[];
+};
+
+const STATUSES = [
+  'PENDING',
+  'CONFIRMED',
+  'SHIPPED',
+  'DELIVERED',
+  'CANCELLED',
+  'RETURNED',
+];
 
 const inputClass =
   'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring';
@@ -60,15 +78,20 @@ export default function SalesPage() {
   const [items, setItems] = useState<SalesItem[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [payments, setPayments] = useState<SalesPageData['payments']>([]);
+  const [returns, setReturns] = useState<SalesPageData['returns']>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
 
   // Order form
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(localDateTimeValue());
+  const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState('PENDING');
   const [deliveryCharge, setDeliveryCharge] = useState('0');
   const [courier, setCourier] = useState('');
@@ -82,15 +105,17 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState('1');
   const [unitPrice, setUnitPrice] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<SalesPageData> => {
     const endpoints = [
       `${API}/sales-orders`,
       `${API}/sales-items`,
       `${API}/customers`,
       `${API}/products`,
+      `${API}/payments`,
+      `${API}/sales-returns`,
     ];
 
-    const responses = await Promise.all(endpoints.map((url) => fetch(url)));
+    const responses = await Promise.all(endpoints.map((url) => apiFetch(url)));
 
     for (const response of responses) {
       if (!response.ok) {
@@ -100,29 +125,57 @@ export default function SalesPage() {
       }
     }
 
-    const [ordersData, itemsData, customersData, productsData] =
+    const [ordersData, itemsData, customersData, productsData, paymentsData, returnsData] =
       await Promise.all(responses.map((response) => response.json()));
 
-    setOrders(ordersData);
-    setItems(itemsData);
-    setCustomers(customersData);
-    setProducts(productsData);
-
-    return ordersData as SalesOrder[];
+    return {
+      orders: ordersData as SalesOrder[],
+      items: itemsData as SalesItem[],
+      customers: customersData as Customer[],
+      products: productsData as Product[],
+      payments: paymentsData as SalesPageData['payments'],
+      returns: returnsData as SalesPageData['returns'],
+    };
   };
 
   useEffect(() => {
+    let active = true;
     fetchData()
+      .then((data) => {
+        if (active) {
+          setOrders(data.orders);
+          setItems(data.items);
+          setCustomers(data.customers);
+          setProducts(data.products);
+          setPayments(data.payments);
+          setReturns(data.returns);
+        }
+      })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load data.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
   }, []);
+
+  const refreshData = async () => {
+    const data = await fetchData();
+    setOrders(data.orders);
+    setItems(data.items);
+    setCustomers(data.customers);
+    setProducts(data.products);
+    setPayments(data.payments);
+    setReturns(data.returns);
+    return data.orders;
+  };
 
   const resetOrderForm = () => {
     setEditingOrderId(null);
     setCustomerId('');
     setOrderDate(localDateTimeValue());
+    setDueDate('');
     setStatus('PENDING');
     setDeliveryCharge('0');
     setCourier('');
@@ -156,6 +209,25 @@ export default function SalesPage() {
     (sum, item) => sum + Number(item.subtotal || 0),
     0,
   );
+
+  const filteredOrders = orders.filter((order) => {
+    const query = orderSearch.trim().toLowerCase();
+    const matchesSearch = !query || [
+      String(order.id), order.customer?.name ?? '', order.status,
+      order.courier ?? '', order.parcelId ?? '', order.notes ?? '',
+    ].some((value) => value.toLowerCase().includes(query));
+    const isOutstanding = !['CANCELLED', 'RETURNED'].includes(order.status) && balanceDue(order) > 0.001;
+    return matchesSearch && (orderStatusFilter === 'ALL' || order.status === orderStatusFilter) && (orderStatusFilter !== 'UNPAID' || isOutstanding);
+  });
+
+  function netPaid(orderId: number) {
+    return payments.filter((payment) => ['PAID', 'REFUNDED'].includes(payment.status) && payment.salesOrder?.id === orderId)
+      .reduce((sum, payment) => sum + (payment.status === 'REFUNDED' ? -1 : 1) * Number(payment.amount), 0);
+  }
+  function balanceDue(order: SalesOrder) {
+    const returned = returns.filter((entry) => entry.salesOrderId === order.id).reduce((sum, entry) => sum + Number(entry.returnAmount), 0);
+    return Math.max(0, Number(order.totalAmount) - returned - netPaid(order.id));
+  }
 
   const selectedDeliveryCharge = Number(selectedOrder?.deliveryCharge ?? 0);
 
@@ -198,6 +270,7 @@ export default function SalesPage() {
       const orderData = {
         customer: { id: Number(customerId) },
         orderDate,
+        dueDate: dueDate || null,
         status,
         deliveryCharge: charge,
         courier: courier || null,
@@ -205,7 +278,7 @@ export default function SalesPage() {
         notes: notes.trim() || null,
       };
 
-      const response = await fetch(
+      const response = await apiFetch(
         editingOrderId
           ? `${API}/sales-orders/${editingOrderId}`
           : `${API}/sales-orders`,
@@ -225,7 +298,7 @@ export default function SalesPage() {
 
       setSelectedOrderId(String(savedOrder.id));
       resetOrderForm();
-      await fetchData();
+      await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save order.');
     } finally {
@@ -265,7 +338,7 @@ export default function SalesPage() {
         unitPrice: price,
       };
 
-      const response = await fetch(
+      const response = await apiFetch(
         editingItemId
           ? `${API}/sales-items/${editingItemId}`
           : `${API}/sales-items`,
@@ -282,10 +355,10 @@ export default function SalesPage() {
       }
 
       resetItemForm();
-      await fetchData();
+      await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save item.');
-      await fetchData().catch(() => {});
+      await refreshData().catch(() => {});
     } finally {
       setSaving(false);
     }
@@ -295,6 +368,7 @@ export default function SalesPage() {
     setEditingOrderId(order.id);
     setCustomerId(String(order.customer?.id ?? ''));
     setOrderDate(order.orderDate.slice(0, 16));
+    setDueDate(order.dueDate ?? '');
     setStatus(order.status);
     setDeliveryCharge(String(order.deliveryCharge ?? 0));
     setCourier(order.courier ?? '');
@@ -326,7 +400,7 @@ export default function SalesPage() {
     setError('');
 
     try {
-      const response = await fetch(`${API}/sales-orders/${id}`, {
+      const response = await apiFetch(`${API}/sales-orders/${id}`, {
         method: 'DELETE',
       });
 
@@ -341,7 +415,7 @@ export default function SalesPage() {
         resetItemForm();
       }
 
-      await fetchData();
+      await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete order.');
     }
@@ -355,7 +429,7 @@ export default function SalesPage() {
     setError('');
 
     try {
-      const response = await fetch(`${API}/sales-items/${id}`, {
+      const response = await apiFetch(`${API}/sales-items/${id}`, {
         method: 'DELETE',
       });
 
@@ -365,7 +439,7 @@ export default function SalesPage() {
       }
 
       if (editingItemId === id) resetItemForm();
-      await fetchData();
+      await refreshData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete item.');
     }
@@ -381,19 +455,16 @@ export default function SalesPage() {
         return 'bg-blue-100 text-blue-700';
       case 'CONFIRMED':
         return 'bg-yellow-100 text-yellow-800';
+      case 'RETURNED':
+        return 'bg-purple-100 text-purple-700';
       default:
         return 'bg-muted text-muted-foreground';
     }
   };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">Sales</h1>
-        <p className="mt-2 text-muted-foreground">
-          Create orders, add products, and track delivery and COD amounts.
-        </p>
-      </header>
+    <div className="page-stack">
+      <header className="page-heading"><div><p className="eyebrow">ORDER MANAGEMENT</p><h1>Sales</h1><p>Create orders, add products, track delivery, payments, and balances.</p></div><span className="count-pill">{orders.length} orders</span></header>
 
       {error && (
         <div
@@ -418,7 +489,7 @@ export default function SalesPage() {
       ) : (
         <>
           {/* Order form */}
-          <section className="rounded-lg border bg-card p-6 shadow-sm">
+          <section className="panel p-5 sm:p-6">
             <h2 className="text-xl font-semibold">
               {editingOrderId
                 ? `Edit Order #${editingOrderId}`
@@ -474,6 +545,11 @@ export default function SalesPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Payment due date</label>
+                <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className={inputClass} />
               </div>
 
               <div>
@@ -562,15 +638,25 @@ export default function SalesPage() {
           </section>
 
           {/* Order list */}
-          <section className="overflow-hidden rounded-lg border bg-card shadow-sm">
+          <section className="panel overflow-hidden">
             <div className="border-b px-6 py-4">
-              <h2 className="font-semibold">Sales Orders ({orders.length})</h2>
+              <h2 className="font-semibold">Sales Orders ({filteredOrders.length} of {orders.length})</h2>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input aria-label="Search sales orders" value={orderSearch} onChange={(event) => setOrderSearch(event.target.value)} placeholder="Search order, customer, courier, or parcel" className="w-full rounded-md border bg-background px-3 py-2 text-sm" />
+                <select aria-label="Filter sales orders by status" value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm sm:w-48">
+                  <option value="ALL">All statuses</option>
+                  <option value="UNPAID">Unpaid / partly paid</option>
+                  {STATUSES.map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+                </select>
+              </div>
             </div>
 
             {orders.length === 0 ? (
               <p className="p-8 text-sm text-muted-foreground">
                 No orders yet. Create your first order above.
               </p>
+            ) : filteredOrders.length === 0 ? (
+              <p className="p-8 text-sm text-muted-foreground">No sales orders match those filters.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -584,6 +670,8 @@ export default function SalesPage() {
                         'Items',
                         'Delivery',
                         'COD Amount',
+                        'Paid',
+                        'Balance',
                         'Courier / Parcel',
                         'Actions',
                       ].map((heading) => (
@@ -597,7 +685,7 @@ export default function SalesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((order) => (
+                    {filteredOrders.map((order) => (
                       <tr
                         key={order.id}
                         className="border-b last:border-0 hover:bg-muted/20"
@@ -627,6 +715,8 @@ export default function SalesPage() {
                         <td className="px-4 py-3 text-sm font-semibold">
                           {money(order.totalAmount)}
                         </td>
+                        <td className="px-4 py-3 text-sm">{money(netPaid(order.id))}</td>
+                        <td className="px-4 py-3 text-sm font-semibold">{money(balanceDue(order))}</td>
                         <td className="px-4 py-3 text-sm">
                           <div>{order.courier || '—'}</div>
                           <div className="text-xs text-muted-foreground">
@@ -635,6 +725,13 @@ export default function SalesPage() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => window.open(`/documents?kind=${order.status === 'RETURNED' ? 'return' : 'sales'}&id=${order.id}`, '_blank', 'noopener,noreferrer')}
+                              className="rounded-md border px-3 py-1.5 hover:bg-muted"
+                            >
+                              Print
+                            </button>
                             <button
                               type="button"
                               onClick={() => {

@@ -3,6 +3,7 @@ package com.ifti.erp.service;
 import com.ifti.erp.entity.Category;
 import com.ifti.erp.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,9 +12,11 @@ import java.util.Optional;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final AuditService auditService;
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(CategoryRepository categoryRepository, AuditService auditService) {
         this.categoryRepository = categoryRepository;
+        this.auditService = auditService;
     }
 
     public List<Category> getAllCategories() {
@@ -24,10 +27,14 @@ public class CategoryService {
         return categoryRepository.findById(id);
     }
 
+    @Transactional
     public Category createCategory(Category category) {
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+        auditService.record("CREATED", "CATEGORY", saved.getId(), "name=" + saved.getName());
+        return saved;
     }
 
+    @Transactional
     public Category updateCategory(Long id, Category categoryDetails) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -35,10 +42,15 @@ public class CategoryService {
         category.setName(categoryDetails.getName());
         category.setDescription(categoryDetails.getDescription());
 
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+        auditService.record("UPDATED", "CATEGORY", id, "name=" + saved.getName());
+        return saved;
     }
 
+    @Transactional
     public void deleteCategory(Long id) {
+        String name = categoryRepository.findById(id).map(Category::getName).orElse("unknown");
+        auditService.record("DELETED", "CATEGORY", id, "name=" + name);
         categoryRepository.deleteById(id);
     }
 }

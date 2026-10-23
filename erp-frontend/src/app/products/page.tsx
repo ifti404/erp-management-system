@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE, apiFetch } from '@/lib/api';
 
 type Product = {
   id: number;
@@ -37,6 +38,7 @@ export default function ProductsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
@@ -56,7 +58,7 @@ export default function ProductsPage() {
   const [message, setMessage] = useState('');
 
   const fetchProducts = () => {
-    fetch('http://localhost:8080/api/products')
+    apiFetch(`${API_BASE}/products`)
       .then((response) => response.json())
       .then((data) => {
         setProducts(data);
@@ -69,7 +71,7 @@ export default function ProductsPage() {
   };
 
   const fetchCategories = () => {
-    fetch('http://localhost:8080/api/categories')
+    apiFetch(`${API_BASE}/categories`)
       .then((response) => response.json())
       .then((data) => {
         setCategories(data);
@@ -80,7 +82,7 @@ export default function ProductsPage() {
   };
 
   const fetchSuppliers = () => {
-    fetch('http://localhost:8080/api/suppliers')
+    apiFetch(`${API_BASE}/suppliers`)
       .then((response) => response.json())
       .then((data) => {
         setSuppliers(data);
@@ -115,7 +117,7 @@ export default function ProductsPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/categories', {
+      const response = await apiFetch(`${API_BASE}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,12 +178,12 @@ export default function ProductsPage() {
 
     try {
       const url = editingId
-        ? `http://localhost:8080/api/products/${editingId}`
-        : 'http://localhost:8080/api/products';
+        ? `${API_BASE}/products/${editingId}`
+        : `${API_BASE}/products`;
 
       const method = editingId ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -239,7 +241,7 @@ export default function ProductsPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/products/${id}`, {
+      const response = await apiFetch(`${API_BASE}/products/${id}`, {
         method: 'DELETE',
       });
 
@@ -267,6 +269,11 @@ export default function ProductsPage() {
 
   const inputClass =
     'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
+
+  const filteredProducts = products.filter((product) =>
+    [product.sku, product.name, product.category?.name, product.supplier?.name]
+      .some((value) => value?.toLowerCase().includes(searchTerm.trim().toLowerCase())),
+  );
 
   const selectClass =
     'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring';
@@ -510,9 +517,9 @@ export default function ProductsPage() {
           <h2 className="font-semibold">Product List</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {products.length} product{products.length !== 1 ? 's' : ''} in
-            catalog
+            Showing {filteredProducts.length} of {products.length} product{products.length !== 1 ? 's' : ''}
           </p>
+          <input aria-label="Search products" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search name, SKU, category, or supplier" className="mt-3 w-full rounded-md border bg-background px-3 py-2 text-sm sm:max-w-md" />
         </div>
 
         {loading ? (
@@ -527,6 +534,8 @@ export default function ProductsPage() {
               Add your first product using the form above.
             </p>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No products match “{searchTerm}”.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -544,7 +553,7 @@ export default function ProductsPage() {
               </thead>
 
               <tbody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <tr
                     key={product.id}
                     className="border-b last:border-b-0 hover:bg-muted/20"
