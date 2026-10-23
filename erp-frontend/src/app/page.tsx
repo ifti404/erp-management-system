@@ -214,26 +214,26 @@ export default function Dashboard() {
       <header className="page-heading"><div><p className="eyebrow">YOUR BUSINESS AT A GLANCE</p><h1>Overview</h1><p>Orders, money due, and stock that needs attention.</p></div><div className="flex flex-wrap gap-2"><Link href="/sales" className="button-primary"><ArrowUpRight className="size-4"/>New sale</Link><Link href="/purchases" className="button-secondary"><ArrowDownLeft className="size-4"/>New purchase</Link></div></header>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Products</p><span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : products.length}</p><p className="mt-1 text-xs text-muted-foreground">Active catalog items</p>
+      <div className="dashboard-metrics grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Products</p><span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : products.length}</p><p className="mt-1 text-xs text-muted-foreground">Active catalog items</p>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Units in stock</p><span className="grid size-9 place-items-center rounded-xl bg-teal-50 text-teal-700"><Boxes className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : totalInventoryUnits.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Across all products</p>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Units in stock</p><span className="grid size-9 place-items-center rounded-xl bg-teal-50 text-teal-700"><Boxes className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : totalInventoryUnits.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Across all products</p>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Customers owe</p><span className="grid size-9 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ArrowDownLeft className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${receivable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open sales balances</p>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Customers owe</p><span className="grid size-9 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ArrowDownLeft className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${receivable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open sales balances</p>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Owed to suppliers</p><span className="grid size-9 place-items-center rounded-xl bg-violet-50 text-violet-700"><Wallet className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${payable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open purchase balances</p>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Owed to suppliers</p><span className="grid size-9 place-items-center rounded-xl bg-violet-50 text-violet-700"><Wallet className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : `৳${payable.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`}</p><p className="mt-1 text-xs text-muted-foreground">Open purchase balances</p>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Low stock</p><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : lowStock.length}</p><p className="mt-1 text-xs text-muted-foreground">At or below reorder level</p>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Low stock</p><span className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : lowStock.length}</p><p className="mt-1 text-xs text-muted-foreground">At or below reorder level</p>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Out of stock</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : outOfStock.length}</p><Link href="/inventory" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review inventory</Link>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Out of stock</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><Package className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : outOfStock.length}</p><Link href="/inventory" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review inventory</Link>
         </div>
 
-        <div className="panel p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Overdue balances</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : overdueCount}</p><Link href="/statements" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review statements</Link>
+        <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Overdue balances</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : overdueCount}</p><Link href="/statements" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review statements</Link>
         </div>
       </div>
 
@@ -254,7 +254,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table w-full text-sm">
               <thead className="border-b bg-muted/40">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">ID</th>
@@ -315,7 +315,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="data-table w-full text-sm">
               <thead className="border-b bg-muted/40">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">ID</th>

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Gamma ERP
 
 A web-based small-business ERP built with Java Spring Boot, MySQL, and Next.js.
@@ -285,10 +284,53 @@ $env:ERP_BOOTSTRAP_PASSWORD = "choose-a-long-private-password"
 .\mvnw.cmd spring-boot:run
 ```
 
-For a hosted backend, set `SPRING_PROFILES_ACTIVE=prod` and supply `DB_URL`,
-`DB_USERNAME`, `DB_PASSWORD`, and `CORS_ALLOWED_ORIGINS` through the hosting
-provider's secret settings before starting the jar. The CORS value must be the
-exact HTTPS frontend origin (no path).
+For local development, the frontend now calls `/api`; Next.js forwards those
+requests to `http://localhost:8080` by default. Set `ERP_API_ORIGIN` only when
+the backend runs at a different origin. This same-origin API route is also used
+for hosted deployments, so the browser's secure sign-in and CSRF cookies remain
+first-party even when the backend is hosted separately.
+
+### Free university-project showcase deployment
+
+The project can be shown using Vercel for the frontend, Render for the Spring
+Boot API, and TiDB Cloud Starter for a free MySQL-compatible database. Free
+services can sleep or have usage limits, so this setup is for a demo and not
+business-critical use.
+
+1. Create a TiDB Cloud Starter instance and a schema named `erp_db`. For a
+   brand-new showcase database, run `erp/database/showcase-schema.sql` once
+   against that empty schema using a MySQL-compatible database client. It
+   creates the current app tables and one default company-settings row, with no
+   sample or personal business records. Do not run V1–V5 afterward: those files
+   upgrade databases from older app versions. Use the connection host, port,
+   username, and password from TiDB's connection panel; TiDB requires TLS. Keep
+   these credentials in Render's environment settings.
+2. In Render, create a Web Service from this repository and choose `erp` as its
+   root directory. It will use `erp/Dockerfile`. Set these environment values:
+
+   - `SPRING_PROFILES_ACTIVE=prod`
+   - `DB_URL` to TiDB's JDBC URL for `erp_db`, including TLS settings
+   - `DB_USERNAME` and `DB_PASSWORD` from TiDB
+   - `CORS_ALLOWED_ORIGINS` to the exact HTTPS Vercel site origin, with no path
+   - `ERP_BOOTSTRAP_USERNAME` and `ERP_BOOTSTRAP_PASSWORD` to create the first
+     administrator. Use a private password and do not commit it.
+
+3. In Vercel, import the same repository and set its root directory to
+   `erp-frontend`. Add these environment values, then redeploy:
+
+   - `NEXT_PUBLIC_API_URL=/api`
+   - `ERP_API_ORIGIN` to the Render service URL, such as
+     `https://your-service.onrender.com` (no trailing slash)
+
+4. Open the Vercel site, sign in with the bootstrap administrator, and check
+   `GET /api/health` at the Render service URL. The first request after an idle
+   period may take longer because Render's free web service sleeps.
+
+The Next.js rewrite proxies `/api/*` to Render under the Vercel site origin.
+This lets the existing Strict, Secure production cookies work without opening
+cross-site cookies. Keep the Render CORS origin set to the Vercel production
+origin. If the Vercel production domain changes, update that setting and
+redeploy the backend.
 
 ```powershell
 cd "C:\path\to\Business ERP\erp-frontend"
@@ -324,177 +366,3 @@ is a display label and does not convert amounts. Accounting journals, tax
 calculations, multiple warehouses, fine-grained permissions within non-admin
 roles, and statutory financial statements are not included. Reports and
 statements are operational views, not accounting records.
-=======
-# Gamma ERP
-
-A web-based Business ERP Management System built with Java Spring Boot, MySQL, and Next.js.
-
-Gamma ERP is designed as a practical ERP solution for managing products, inventory, suppliers, customers, purchases, sales, and payments in one system.
-
-> Academic project developed for learning and demonstrating Java, Spring Boot, database design, REST APIs, and modern web development.
-
----
-
-## Features
-
-### Dashboard
-
-- Total products
-- Total inventory units
-- Low-stock products
-- Out-of-stock products
-- Sales received
-- Purchases paid
-- Recent sales orders
-- Recent purchase orders
-- Low-stock product overview
-
-### Product Management
-
-- Create products
-- Edit products
-- Delete products
-- SKU management
-- Product pricing
-- Reorder levels
-- Product categories
-- Product suppliers
-- Product status management
-- Create categories directly while adding a product
-
-### Inventory Management
-
-- Automatic inventory creation for new products
-- Automatic stock increase after purchases
-- Automatic stock deduction after sales
-- Automatic stock restoration when sales items are deleted
-- Automatic stock restoration when purchase items are deleted
-- Low-stock detection
-- Out-of-stock detection
-- Protection against negative inventory
-
-### Customer Management
-
-- Create customers
-- Edit customers
-- Delete customers
-- Customer information management
-
-### Supplier Management
-
-- Create suppliers
-- Edit suppliers
-- Delete suppliers
-- Supplier information management
-
-### Purchase Management
-
-- Create purchase orders
-- Edit purchase orders
-- Purchase order status
-- Add purchase items
-- Edit purchase items
-- Delete purchase items
-- Automatic subtotal calculation
-- Automatic purchase order total calculation
-- Automatic inventory updates
-
-### Sales Management
-
-- Create sales orders
-- Edit sales orders
-- Sales order status
-- Add sales items
-- Edit sales items
-- Delete sales items
-- Automatic subtotal calculation
-- Automatic sales order total calculation
-- Automatic inventory deduction
-
-### Payment Management
-
-- Record sales payments
-- Record purchase payments
-- Edit payments
-- Delete payments
-- Payment status
-- Payment method
-- Payment notes
-- Payments linked to the appropriate sales or purchase order
-
-### Data Integrity
-
-- Primary and foreign key relationships
-- Backend validation
-- Required-field validation
-- Quantity validation
-- Price validation
-- Inventory protection
-- Relationship protection when deleting records
-- Transactional inventory updates
-
----
-
-## Tech Stack
-
-### Backend
-
-- Java 27
-- Spring Boot 4.1.1
-- Spring Data JPA
-- Hibernate
-- Maven
-- REST API
-- Bean Validation
-
-### Database
-
-- MySQL 8.x
-- MySQL Workbench
-
-### Frontend
-
-- Next.js 16
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-
-### Development Tools
-
-- IntelliJ IDEA
-- Visual Studio Code
-- Git
-- GitHub
-- MySQL Workbench
-
----
-
-## System Architecture
-
-The application follows a simple client-server architecture.
-
-```text
-┌───────────────────────────────┐
-│          Next.js              │
-│        Frontend UI            │
-│     React + TypeScript        │
-└───────────────┬───────────────┘
-                │
-                │ REST API
-                ▼
-┌───────────────────────────────┐
-│        Spring Boot            │
-│          Backend              │
-│                               │
-│ Controller → Service → JPA    │
-└───────────────┬───────────────┘
-                │
-                │ JDBC / Hibernate
-                ▼
-┌───────────────────────────────┐
-│            MySQL              │
-│          erp_db               │
-└───────────────────────────────┘
-```
->>>>>>> edc71aefa89594cf9040eba79f454355b029bdec
