@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package com.ifti.erp.repository;
 
 import com.ifti.erp.entity.Inventory;
@@ -21,3 +22,16 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT i FROM Inventory i WHERE i.id = :id")
     Optional<Inventory> findByIdForUpdate(@Param("id") Long id);
 }
+=======
+package com.ifti.erp.repository;
+
+import com.ifti.erp.entity.Inventory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface InventoryRepository extends JpaRepository<Inventory, Long> {
+
+    Optional<Inventory> findByProductId(Long productId);
+}
+>>>>>>> edc71aefa89594cf9040eba79f454355b029bdec

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package com.ifti.erp.repository;
 
 import com.ifti.erp.entity.User;
@@ -15,3 +16,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select count(u) from User u where lower(u.role.name) = lower(:roleName) and u.isActive = true")
     long countActiveByRoleNameIgnoreCase(@Param("roleName") String roleName);
 }
+=======
+package com.ifti.erp.repository;
+
+import com.ifti.erp.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+}
+>>>>>>> edc71aefa89594cf9040eba79f454355b029bdec
