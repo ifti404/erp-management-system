@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, AUTH_STORAGE_KEY, fetchWithCsrf } from '@/lib/api';
-import { Boxes, CheckCircle2, Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, LockKeyhole } from 'lucide-react';
 
 type Mode = 'signin' | 'signup';
 const inputClass = 'control min-h-12 rounded-xl px-4 text-base';
@@ -92,7 +92,7 @@ export default function LoginPage() {
     <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-24 size-80 rounded-full bg-teal-200/40 blur-3xl dark:bg-teal-900/25" />
     <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -right-16 size-96 rounded-full bg-cyan-100/70 blur-3xl dark:bg-cyan-950/30" />
     <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_24px_80px_-32px_rgba(15,70,75,0.28)] backdrop-blur dark:border-border dark:bg-card/95 dark:shadow-black/30 sm:p-9">
-      <div className="mb-7 flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-900/10"><Boxes className="size-6"/></span><div><p className="text-xs font-bold tracking-[0.16em] text-teal-700 dark:text-teal-300">GAMMA ERP</p><p className="mt-0.5 text-sm text-muted-foreground">Your business workspace</p></div></div>
+      <div className="mb-7 flex items-center gap-3"><span className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-md shadow-teal-900/10"><img src="/gamma-logo.png" alt="Gamma ERP" className="size-full object-contain"/></span><div><p className="text-xs font-bold tracking-[0.16em] text-teal-700 dark:text-teal-300">GAMMA ERP</p><p className="mt-0.5 text-sm text-muted-foreground">Your business workspace</p></div></div>
       <div><p className="eyebrow">WELCOME</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">{mode === 'signin' ? 'Good to see you' : 'Create your account'}</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{mode === 'signin' ? 'Sign in with your username or email address.' : 'Send your details to the business administrator for account activation.'}</p></div>
 
       <div className="mt-6 grid grid-cols-2 rounded-xl bg-muted/70 p-1" role="group" aria-label="Account access">

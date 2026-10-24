@@ -5,6 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Gamma ERP',
   description: 'Business ERP Management System',
+  icons: { icon: '/gamma-logo.png', apple: '/gamma-logo.png' },
 };
 
 export default function RootLayout({
