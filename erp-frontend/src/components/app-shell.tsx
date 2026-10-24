@@ -31,16 +31,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const title = labels[pathname] ?? 'Gamma ERP';
   useEffect(() => {
     void Promise.resolve().then(() => setCompact(window.localStorage.getItem('gamma-erp-sidebar-compact') === 'true'));
+  }, []);
+  useEffect(() => {
     let active = true;
     apiFetch(`${API_BASE}/auth/me`).then((response) => response.ok ? response.json() : null)
       .then((user: { username: string; fullName: string; photoData?: string | null; roles: string[]; themePreference?: string } | null) => {
-        if (!active || !user) return;
+        if (!active) return;
+        if (!user) { setProfile(null); return; }
         setProfile(user);
         const preference = user.themePreference === 'DARK' ? 'DARK' : 'LIGHT';
         setTheme(preference); document.documentElement.classList.toggle('dark', preference === 'DARK');
       }).catch(() => {});
     return () => { active = false; };
-  }, []);
+  }, [pathname]);
   useEffect(() => {
     const refreshProfile = () => { apiFetch(`${API_BASE}/auth/me`).then((response) => response.ok ? response.json() : null).then((user) => { if (user) setProfile(user); }).catch(() => {}); };
     window.addEventListener('gamma-profile-updated', refreshProfile);
