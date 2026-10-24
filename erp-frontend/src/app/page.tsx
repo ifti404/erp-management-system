@@ -24,6 +24,7 @@ type Inventory = {
 
 type SalesOrder = {
   id: number;
+  transactionId?: string | null;
   customer: {
     name: string;
   };
@@ -35,6 +36,7 @@ type SalesOrder = {
 
 type PurchaseOrder = {
   id: number;
+  transactionId?: string | null;
   supplier: {
     name: string;
   };
@@ -249,7 +251,7 @@ export default function Dashboard() {
             <table className="data-table w-full text-sm">
               <thead className="border-b bg-muted/40">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">ID</th>
+                  <th className="px-4 py-3 text-left font-medium">Trx ID</th>
                   <th className="px-4 py-3 text-left font-medium">Customer</th>
                   <th className="px-4 py-3 text-left font-medium">Date</th>
                   <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -263,7 +265,7 @@ export default function Dashboard() {
                     key={order.id}
                     className="border-b last:border-0 transition-colors hover:bg-muted/30"
                   >
-                    <td className="px-4 py-3 font-medium">#{order.id}</td>
+                    <td className="px-4 py-3 font-medium">{order.transactionId ?? `ORD-${String(order.id).padStart(2, '0')}`}</td>
 
                     <td className="px-4 py-3">{order.customer.name}</td>
 
@@ -310,7 +312,7 @@ export default function Dashboard() {
             <table className="data-table w-full text-sm">
               <thead className="border-b bg-muted/40">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">ID</th>
+                  <th className="px-4 py-3 text-left font-medium">Trx ID</th>
                   <th className="px-4 py-3 text-left font-medium">Supplier</th>
                   <th className="px-4 py-3 text-left font-medium">Date</th>
                   <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -324,7 +326,7 @@ export default function Dashboard() {
                     key={order.id}
                     className="border-b last:border-0 transition-colors hover:bg-muted/30"
                   >
-                    <td className="px-4 py-3 font-medium">#{order.id}</td>
+                    <td className="px-4 py-3 font-medium">{order.transactionId ?? `PUR-${String(order.id).padStart(2, '0')}`}</td>
 
                     <td className="px-4 py-3">{order.supplier.name}</td>
 

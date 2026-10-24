@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "expenses")
 public class Expense {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Column(name = "transaction_id", unique = true, length = 40) private String transactionId;
     @NotNull @ManyToOne(optional = false) @JoinColumn(name = "category_id", nullable = false) private ExpenseCategory category;
     @NotNull @DecimalMin("0.01") @Column(nullable = false, precision = 12, scale = 2) private BigDecimal amount;
     @NotNull @Column(name = "expense_date", nullable = false) private LocalDate expenseDate;
@@ -22,6 +23,8 @@ public class Expense {
     @Column(name = "created_by", nullable = false, length = 50) private String createdBy;
     public Expense() {}
     public Long getId() { return id; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public ExpenseCategory getCategory() { return category; }
     public void setCategory(ExpenseCategory category) { this.category = category; }
     public BigDecimal getAmount() { return amount; }

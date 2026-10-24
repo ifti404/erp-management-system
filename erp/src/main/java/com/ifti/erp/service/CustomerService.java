@@ -27,6 +27,10 @@ public class CustomerService {
         return customerRepository.findById(id);
     }
 
+    public Optional<Customer> findByPhone(String phone) {
+        return customerRepository.findFirstByPhone(phone);
+    }
+
     @Transactional
     public Customer createCustomer(Customer customer) {
         Customer saved = customerRepository.save(customer);

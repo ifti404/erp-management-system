@@ -44,6 +44,8 @@ public class PurchaseOrderService {
         purchaseOrder.setStatus(status.toUpperCase());
         purchaseOrder.setTotalAmount(BigDecimal.ZERO);
         PurchaseOrder saved = purchaseOrderRepository.save(purchaseOrder);
+        saved.setTransactionId(transactionId(saved.getTransactionId(), saved.getId()));
+        saved = purchaseOrderRepository.save(saved);
         auditService.record("CREATED", "PURCHASE_ORDER", saved.getId(), "status=" + saved.getStatus() + ", due=" + saved.getDueDate());
         return saved;
     }
@@ -64,6 +66,7 @@ public class PurchaseOrderService {
         purchaseOrder.setOrderDate(purchaseOrderDetails.getOrderDate());
         purchaseOrder.setDueDate(purchaseOrderDetails.getDueDate());
         purchaseOrder.setNotes(purchaseOrderDetails.getNotes());
+        purchaseOrder.setTransactionId(transactionId(purchaseOrderDetails.getTransactionId(), id));
 
         List<com.ifti.erp.entity.PurchaseItem> items =
                 purchaseItemRepository.findByPurchaseOrderId(id);
@@ -111,5 +114,12 @@ public class PurchaseOrderService {
 
         auditService.record("DELETED", "PURCHASE_ORDER", id, "status=" + purchaseOrder.getStatus() + ", total=" + purchaseOrder.getTotalAmount());
         purchaseOrderRepository.delete(purchaseOrder);
+    }
+
+    private String transactionId(String supplied, Long fallback) {
+        String suffix = supplied == null ? "" : supplied.trim().replaceFirst("(?i)^PUR-", "");
+        if (suffix.isBlank()) suffix = String.format(java.util.Locale.ROOT, "%02d", fallback);
+        if (!suffix.matches("[0-9]{1,30}")) throw new IllegalArgumentException("Transaction number must contain digits only");
+        return "PUR-" + suffix;
     }
 }

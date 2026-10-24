@@ -18,6 +18,9 @@ public class PurchaseOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "transaction_id", unique = true, length = 40)
+    private String transactionId;
+
     @ManyToOne
     @JoinColumn(name = "supplier_id", nullable = false)
     @NotNull(message = "Supplier is required")
@@ -49,6 +52,8 @@ public class PurchaseOrder {
     public Long getId() {
         return id;
     }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
 
     public Supplier getSupplier() {
         return supplier;

@@ -8,6 +8,9 @@ const API = API_BASE;
 type Supplier = {
   id: number;
   name: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
 };
 
 type Product = {
@@ -19,6 +22,7 @@ type Product = {
 
 type PurchaseOrder = {
   id: number;
+  transactionId: string;
   supplier: Supplier;
   orderDate: string;
   dueDate: string | null;
@@ -55,6 +59,12 @@ export default function PurchasesPage() {
 
   // Purchase Order form
   const [supplierId, setSupplierId] = useState('');
+  const [transactionNumber, setTransactionNumber] = useState('');
+  const [showNewSupplier, setShowNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
+  const [newSupplierAddress, setNewSupplierAddress] = useState('');
   const [orderDate, setOrderDate] = useState(localDateTimeValue());
   const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState('PENDING');
@@ -165,7 +175,7 @@ export default function PurchasesPage() {
   const filteredOrders = orders.filter((order) => {
     const query = orderSearch.trim().toLowerCase();
     const matchesSearch = !query || [
-      String(order.id), order.supplier?.name ?? '', order.status, order.notes ?? '',
+      String(order.id), order.transactionId ?? '', order.supplier?.name ?? '', order.status, order.notes ?? '',
     ].some((value) => value.toLowerCase().includes(query));
     const paid = payments.filter((payment) => payment.status === 'PAID' && payment.purchaseOrder?.id === order.id).reduce((sum, payment) => sum + Number(payment.amount), 0);
     const outstanding = order.status !== 'CANCELLED' && paid + 0.001 < Number(order.totalAmount);
@@ -178,6 +188,7 @@ export default function PurchasesPage() {
 
   const resetOrderForm = () => {
     setSupplierId('');
+    setTransactionNumber(''); setShowNewSupplier(false); setNewSupplierName(''); setNewSupplierPhone(''); setNewSupplierEmail(''); setNewSupplierAddress('');
     setOrderDate(localDateTimeValue());
     setDueDate('');
     setStatus('PENDING');
@@ -193,8 +204,10 @@ export default function PurchasesPage() {
       alert('Please fill in all required fields.');
       return;
     }
+    if (transactionNumber && !/^\d{1,30}$/.test(transactionNumber)) { alert('Transaction number must contain digits only.'); return; }
 
     const purchaseOrderData = {
+      transactionId: transactionNumber.trim() ? `PUR-${transactionNumber.trim()}` : null,
       supplier: {
         id: Number(supplierId),
       },
@@ -241,6 +254,7 @@ export default function PurchasesPage() {
   const handleEditOrder = (order: PurchaseOrder) => {
     setEditingOrderId(order.id);
     setSupplierId(String(order.supplier.id));
+    setTransactionNumber(order.transactionId?.replace(/^PUR-/, '') ?? '');
     setOrderDate(order.orderDate ? order.orderDate.substring(0, 16) : '');
     setDueDate(order.dueDate ?? '');
     setStatus(order.status);
@@ -250,6 +264,17 @@ export default function PurchasesPage() {
       top: 0,
       behavior: 'smooth',
     });
+  };
+
+  const createSupplierInline = async () => {
+    if (!newSupplierName.trim()) { alert('Enter the supplier name.'); return; }
+    try {
+      const response = await apiFetch(`${API}/suppliers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newSupplierName.trim(), phone: newSupplierPhone.trim() || null, email: newSupplierEmail.trim() || null, address: newSupplierAddress.trim() || null }) });
+      if (!response.ok) throw new Error('Could not save the new supplier. Check the details and try again.');
+      const supplier = await response.json() as Supplier;
+      setSuppliers((current) => [...current, supplier].sort((a, b) => a.name.localeCompare(b.name)));
+      setSupplierId(String(supplier.id)); setShowNewSupplier(false); setNewSupplierName(''); setNewSupplierPhone(''); setNewSupplierEmail(''); setNewSupplierAddress('');
+    } catch (error) { alert(error instanceof Error ? error.message : 'Could not add supplier.'); }
   };
 
   const handleDeleteOrder = async (id: number) => {
@@ -501,6 +526,7 @@ export default function PurchasesPage() {
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
+              required
               className={inputClass}
             >
               <option value="">Select supplier</option>
@@ -511,7 +537,11 @@ export default function PurchasesPage() {
                 </option>
               ))}
             </select>
+            <button type="button" onClick={() => setShowNewSupplier((shown) => !shown)} className="mt-2 text-xs font-medium text-primary hover:underline">{showNewSupplier ? 'Cancel new supplier' : '+ Add a supplier here'}</button>
+            {showNewSupplier && <div className="mt-3 grid gap-3 rounded-xl border border-border bg-muted/20 p-4"><p className="text-sm font-semibold">New supplier</p><input maxLength={100} value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} placeholder="Supplier name" className={inputClass}/><input maxLength={20} value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} placeholder="Phone (optional)" className={inputClass}/><input type="email" maxLength={150} value={newSupplierEmail} onChange={(e) => setNewSupplierEmail(e.target.value)} placeholder="Email (optional)" className={inputClass}/><input maxLength={255} value={newSupplierAddress} onChange={(e) => setNewSupplierAddress(e.target.value)} placeholder="Address (optional)" className={inputClass}/><button type="button" onClick={() => void createSupplierInline()} className="button-primary w-fit">Save supplier and select</button></div>}
           </div>
+
+          <div><label className="text-sm font-medium">Transaction ID</label><div className="mt-1 flex overflow-hidden rounded-md border bg-background"><span className="grid place-items-center border-r bg-muted px-3 text-sm font-semibold text-muted-foreground">PUR-</span><input inputMode="numeric" pattern="[0-9]*" value={transactionNumber} onChange={(e) => setTransactionNumber(e.target.value.replace(/\D/g, ''))} placeholder="Auto" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"/></div><p className="mt-1 text-xs text-muted-foreground">Leave blank to use the next order number.</p></div>
 
           {/* Order Date */}
           <div>
@@ -626,7 +656,7 @@ export default function PurchasesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
-                  <th className="px-4 py-3 text-sm font-medium">ID</th>
+                  <th className="px-4 py-3 text-sm font-medium">Trx ID</th>
                   <th className="px-4 py-3 text-sm font-medium">Supplier</th>
                   <th className="px-4 py-3 text-sm font-medium">Order Date</th>
                   <th className="px-4 py-3 text-sm font-medium">Status</th>
@@ -645,7 +675,7 @@ export default function PurchasesPage() {
                     className="border-b last:border-b-0 hover:bg-muted/20"
                   >
                     <td className="px-4 py-3 text-sm font-medium">
-                      #{order.id}
+                      {order.transactionId || `PUR-${String(order.id).padStart(2, '0')}`}
                     </td>
 
                     <td className="px-4 py-3 text-sm">
@@ -740,7 +770,7 @@ export default function PurchasesPage() {
 
               {orders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  #{order.id} — {order.supplier?.name}
+                  {order.transactionId || `PUR-${String(order.id).padStart(2, '0')}`} — {order.supplier?.name}
                 </option>
               ))}
             </select>

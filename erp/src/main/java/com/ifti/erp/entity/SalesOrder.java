@@ -18,6 +18,9 @@ public class SalesOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "transaction_id", unique = true, length = 40)
+    private String transactionId;
+
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
     @NotNull(message = "Customer is required")
@@ -84,6 +87,8 @@ public class SalesOrder {
     public Long getId() {
         return id;
     }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
 
     public Customer getCustomer() {
         return customer;

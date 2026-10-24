@@ -59,6 +59,8 @@ public class SalesOrderService {
         salesOrder.setInventoryReleased(false);
 
         SalesOrder saved = salesOrderRepository.save(salesOrder);
+        saved.setTransactionId(transactionId("ORD", saved.getTransactionId(), saved.getId()));
+        saved = salesOrderRepository.save(saved);
         auditService.record("CREATED", "SALES_ORDER", saved.getId(), "status=" + saved.getStatus() + ", total=" + saved.getTotalAmount() + ", due=" + saved.getDueDate());
         return saved;
     }
@@ -100,6 +102,7 @@ public class SalesOrderService {
         order.setCourier(salesOrderDetails.getCourier());
         order.setParcelId(salesOrderDetails.getParcelId());
         order.setNotes(salesOrderDetails.getNotes());
+        order.setTransactionId(transactionId("ORD", salesOrderDetails.getTransactionId(), id));
 
         BigDecimal itemsSubtotal =
                 salesItemRepository.calculateTotalBySalesOrderId(id);
@@ -210,5 +213,12 @@ public class SalesOrderService {
         }
 
         return charge;
+    }
+
+    private String transactionId(String prefix, String supplied, Long fallback) {
+        String suffix = supplied == null ? "" : supplied.trim().replaceFirst("(?i)^" + prefix + "-", "");
+        if (suffix.isBlank()) suffix = String.format(java.util.Locale.ROOT, "%02d", fallback);
+        if (!suffix.matches("[0-9]{1,30}")) throw new IllegalArgumentException("Transaction number must contain digits only");
+        return prefix + "-" + suffix;
     }
 }

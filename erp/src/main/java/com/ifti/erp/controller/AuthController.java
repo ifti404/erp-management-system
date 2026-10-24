@@ -1,6 +1,7 @@
 package com.ifti.erp.controller;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,21 +26,25 @@ public class AuthController {
     private final com.ifti.erp.service.AuditService audit;
     private final RegistrationService registration;
     private final com.ifti.erp.repository.UserRepository users;
+    private final PasswordEncoder passwordEncoder;
     @org.springframework.beans.factory.annotation.Value("${app.auth.cookie-secure:false}")
     private boolean secureCookie;
 
     public AuthController(com.ifti.erp.service.RememberedSessionService sessions,
                           com.ifti.erp.service.AuditService audit,
                           RegistrationService registration,
-                          com.ifti.erp.repository.UserRepository users) {
+                          com.ifti.erp.repository.UserRepository users,
+                          PasswordEncoder passwordEncoder) {
         this.sessions = sessions;
         this.audit = audit;
         this.registration = registration;
         this.users = users;
+        this.passwordEncoder = passwordEncoder;
     }
-    public record CurrentUser(String username, String fullName, String photoData, List<String> roles, String themePreference, List<String> permissions) {}
+    public record CurrentUser(String username, String fullName, String email, String phone, String photoData, List<String> roles, String themePreference, List<String> permissions) {}
     public record ThemeRequest(String themePreference) {}
     public record ProfilePhotoRequest(String photoData) {}
+    public record ProfileUpdateRequest(String fullName, String email, String phone, String currentPassword, String newPassword, String confirmPassword) {}
 
     @GetMapping("/csrf")
     public java.util.Map<String, String> csrf(CsrfToken token) {
@@ -100,7 +105,7 @@ public class AuthController {
     @GetMapping("/me")
     public CurrentUser me(Authentication authentication) {
         var user = users.findByUsername(authentication.getName()).orElseThrow();
-        return new CurrentUser(authentication.getName(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+        return new CurrentUser(authentication.getName(), user.getFullName(), user.getEmail(), user.getPhone(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
                 user.getThemePreference(), effectivePermissions(user));
     }
 
@@ -110,8 +115,46 @@ public class AuthController {
         var user = users.findByUsername(authentication.getName()).orElseThrow();
         user.setPhotoData(com.ifti.erp.security.ImageDataValidator.validate(request == null ? null : request.photoData()));
         users.save(user);
-        return new CurrentUser(user.getUsername(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+        return new CurrentUser(user.getUsername(), user.getFullName(), user.getEmail(), user.getPhone(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
                 user.getThemePreference(), effectivePermissions(user));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/profile")
+    @Transactional
+    public CurrentUser updateProfile(Authentication authentication, @RequestBody ProfileUpdateRequest request, HttpServletResponse response) {
+        var user = users.findByUsername(authentication.getName()).orElseThrow();
+        if (request == null || request.fullName() == null || request.fullName().isBlank() || request.fullName().trim().length() > 100)
+            throw new IllegalArgumentException("Display name is required and must be 100 characters or fewer");
+        String email = request.email() == null || request.email().isBlank() ? null : request.email().trim();
+        if (email != null && (email.length() > 100 || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")))
+            throw new IllegalArgumentException("Enter a valid email address");
+        if (email != null && users.findByEmailIgnoreCase(email).filter(existing -> !existing.getId().equals(user.getId())).isPresent())
+            throw new IllegalArgumentException("That email address is already in use");
+        String phone = request.phone() == null || request.phone().isBlank() ? null : request.phone().trim();
+        if (phone != null && phone.length() > 20) throw new IllegalArgumentException("Phone number must be 20 characters or fewer");
+        boolean changingPassword = request.newPassword() != null && !request.newPassword().isBlank();
+        if (changingPassword) {
+            if (request.currentPassword() == null || !passwordEncoder.matches(request.currentPassword(), user.getPasswordHash()))
+                throw new IllegalArgumentException("Current password is incorrect");
+            if (request.newPassword().length() < 10 || request.newPassword().length() > 72)
+                throw new IllegalArgumentException("New password must be between 10 and 72 characters");
+            if (!request.newPassword().equals(request.confirmPassword()))
+                throw new IllegalArgumentException("New password entries do not match");
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        } else if (request.confirmPassword() != null && !request.confirmPassword().isBlank()) {
+            throw new IllegalArgumentException("Enter a new password before confirming it");
+        }
+        user.setFullName(request.fullName().trim());
+        user.setEmail(email);
+        user.setPhone(phone);
+        users.save(user);
+        if (changingPassword) {
+            sessions.revokeAll(user.getUsername());
+            boolean remembered = false;
+            String token = sessions.create(user.getUsername(), remembered);
+            setCookie(response, token, null);
+        }
+        return new CurrentUser(user.getUsername(), user.getFullName(), user.getEmail(), user.getPhone(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)), user.getThemePreference(), effectivePermissions(user));
     }
 
     @org.springframework.web.bind.annotation.PatchMapping("/preferences/theme")
@@ -124,7 +167,7 @@ public class AuthController {
         var user = users.findByUsername(authentication.getName()).orElseThrow();
         user.setThemePreference(request.themePreference().toUpperCase());
         users.save(user);
-        return new CurrentUser(user.getUsername(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+        return new CurrentUser(user.getUsername(), user.getFullName(), user.getEmail(), user.getPhone(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
                 user.getThemePreference(), effectivePermissions(user));
     }
 

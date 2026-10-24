@@ -56,7 +56,7 @@ public class UserController {
             if (!request.active() && user.getUsername().equals(authentication.getName())) {
                 throw new IllegalArgumentException("You cannot deactivate your own account");
             }
-            return ResponseEntity.ok(userService.setActive(id, request.active()));
+            return ResponseEntity.ok(userService.setActive(id, request.active(), authentication.getName()));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -70,9 +70,9 @@ public class UserController {
 
     @PatchMapping("/{id}/password")
     public ResponseEntity<Void> resetPassword(@PathVariable Long id,
-            @Valid @RequestBody UserPasswordRequest request) {
+            @Valid @RequestBody UserPasswordRequest request, Authentication authentication) {
         if (userService.getUserById(id).isEmpty()) return ResponseEntity.notFound().build();
-        userService.resetPassword(id, request.password());
+        userService.resetPassword(id, request.password(), authentication.getName());
         return ResponseEntity.noContent().build();
     }
 

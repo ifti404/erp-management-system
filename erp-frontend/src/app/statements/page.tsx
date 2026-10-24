@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { API_BASE, apiFetch } from '@/lib/api';
 
 type Party = { id: number; name: string };
-type Order = { id: number; orderDate: string; dueDate: string | null; status: string; totalAmount: number; customer?: Party; supplier?: Party };
+type Order = { id: number; transactionId?: string | null; orderDate: string; dueDate: string | null; status: string; totalAmount: number; customer?: Party; supplier?: Party };
 type Payment = { id: number; paymentDate: string; status: string; amount: number; salesOrder?: { id: number }; purchaseOrder?: { id: number } };
 type SalesReturn = { id: number; salesOrderId: number; returnAmount: number; createdAt: string; reason: string };
 type StatementRow = { date: string; reference: string; description: string; debit: number; credit: number; balance: number; dueDate?: string | null; orderId?: number };
@@ -27,11 +27,11 @@ export default function StatementsPage() {
     if (!partyId) return { rows: [] as StatementRow[], openingBalance: 0, endingBalance: 0 };
     const events: Omit<StatementRow, 'balance'>[] = [];
     if (kind === 'CUSTOMER') {
-      for (const order of sales.filter((entry) => entry.customer?.id === Number(partyId) && !['CANCELLED', 'RETURNED'].includes(entry.status))) events.push({ date: order.orderDate, reference: `SO-${order.id}`, description: `Sales order #${order.id} · ${order.status}`, debit: Number(order.totalAmount), credit: 0, dueDate: order.dueDate, orderId: order.id });
+      for (const order of sales.filter((entry) => entry.customer?.id === Number(partyId) && !['CANCELLED', 'RETURNED'].includes(entry.status))) events.push({ date: order.orderDate, reference: order.transactionId ?? `ORD-${String(order.id).padStart(2, '0')}`, description: `Sales order ${order.transactionId ?? `ORD-${String(order.id).padStart(2, '0')}`} · ${order.status}`, debit: Number(order.totalAmount), credit: 0, dueDate: order.dueDate, orderId: order.id });
       for (const entry of returns.filter((value) => sales.find((o) => o.id === value.salesOrderId)?.customer?.id === Number(partyId))) events.push({ date: entry.createdAt, reference: `RET-${entry.id}`, description: `Returned items · Sales #${entry.salesOrderId} · ${entry.reason}`, debit: 0, credit: Number(entry.returnAmount), orderId: entry.salesOrderId });
       for (const payment of payments.filter((entry) => entry.salesOrder && sales.find((o) => o.id === entry.salesOrder?.id)?.customer?.id === Number(partyId) && ['PAID', 'REFUNDED'].includes(entry.status))) events.push({ date: payment.paymentDate, reference: `PAY-${payment.id}`, description: `${payment.status === 'REFUNDED' ? 'Payment refunded' : 'Payment received'} · Sales #${payment.salesOrder?.id}`, debit: payment.status === 'REFUNDED' ? Number(payment.amount) : 0, credit: payment.status === 'PAID' ? Number(payment.amount) : 0, orderId: payment.salesOrder?.id });
     } else {
-      for (const order of purchases.filter((entry) => entry.supplier?.id === Number(partyId) && orderNotCancelled(entry.status))) events.push({ date: order.orderDate, reference: `PO-${order.id}`, description: `Purchase order #${order.id} · ${order.status}`, debit: Number(order.totalAmount), credit: 0, dueDate: order.dueDate, orderId: order.id });
+      for (const order of purchases.filter((entry) => entry.supplier?.id === Number(partyId) && orderNotCancelled(entry.status))) events.push({ date: order.orderDate, reference: order.transactionId ?? `PUR-${String(order.id).padStart(2, '0')}`, description: `Purchase order ${order.transactionId ?? `PUR-${String(order.id).padStart(2, '0')}`} · ${order.status}`, debit: Number(order.totalAmount), credit: 0, dueDate: order.dueDate, orderId: order.id });
       for (const payment of payments.filter((entry) => entry.purchaseOrder && purchases.find((o) => o.id === entry.purchaseOrder?.id)?.supplier?.id === Number(partyId) && ['PAID', 'REFUNDED'].includes(entry.status))) events.push({ date: payment.paymentDate, reference: `PAY-${payment.id}`, description: `${payment.status === 'REFUNDED' ? 'Payment returned' : 'Payment sent'} · Purchase #${payment.purchaseOrder?.id}`, debit: payment.status === 'REFUNDED' ? Number(payment.amount) : 0, credit: payment.status === 'PAID' ? Number(payment.amount) : 0, orderId: payment.purchaseOrder?.id });
     }
     events.sort((a, b) => a.date.localeCompare(b.date) || a.reference.localeCompare(b.reference));

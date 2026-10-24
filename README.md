@@ -270,6 +270,10 @@ It adds nullable image-data columns; existing accounts and company settings
 remain unchanged. The app accepts PNG and JPEG images up to 2 MB.
 
 The sign-in and sign-up forms now send a CSRF token with browser write requests.
+Before deploying custom transaction references and the ledger, run
+`erp/database/migrations/V9__transaction_ids.sql` once after V8. It adds unique
+transaction IDs to sales orders, purchase orders, and expenses, backfills
+existing records, and lets blank IDs auto-generate on new records.
 Use the supplied local browser at `http://localhost:3000` for development.
 
 ### Sign-in

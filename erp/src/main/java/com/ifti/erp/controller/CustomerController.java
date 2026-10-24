@@ -23,6 +23,11 @@ public class CustomerController {
         return customerService.getAllCustomers();
     }
 
+    @GetMapping("/lookup")
+    public ResponseEntity<Customer> lookupByPhone(@RequestParam String phone) {
+        return customerService.findByPhone(phone.trim()).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Customer> getCustomerById(@PathVariable Long id) {
         return customerService.getCustomerById(id)

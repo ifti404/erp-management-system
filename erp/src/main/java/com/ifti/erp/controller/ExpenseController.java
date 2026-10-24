@@ -26,7 +26,12 @@ public class ExpenseController {
         var category = categories.findById(expense.getCategory().getId()).orElseThrow(() -> new IllegalArgumentException("Expense category not found"));
         if (!category.isActive()) throw new IllegalArgumentException("Choose an active expense category");
         expense.setCategory(category); expense.setCreatedAt(LocalDateTime.now()); expense.setCreatedBy(authentication.getName());
-        var saved = expenses.save(expense); audit.record("CREATED", "EXPENSE", saved.getId(), "amount=" + saved.getAmount() + ", category=" + category.getName()); return saved;
+        var saved = expenses.save(expense);
+        String suffix = saved.getTransactionId() == null ? "" : saved.getTransactionId().trim().replaceFirst("(?i)^EXP-", "");
+        if (suffix.isBlank()) suffix = String.format(java.util.Locale.ROOT, "%02d", saved.getId());
+        if (!suffix.matches("[0-9]{1,30}")) throw new IllegalArgumentException("Transaction number must contain digits only");
+        saved.setTransactionId("EXP-" + suffix); saved = expenses.save(saved);
+        audit.record("CREATED", "EXPENSE", saved.getId(), "transaction=" + saved.getTransactionId() + ", amount=" + saved.getAmount() + ", category=" + category.getName()); return saved;
     }
     @DeleteMapping("/expenses/{id}") public ResponseEntity<Void> delete(@PathVariable Long id) {
         Expense expense = expenses.findById(id).orElseThrow(() -> new IllegalArgumentException("Expense not found"));

@@ -8,6 +8,7 @@ function localDateTimeValue() { const now = new Date(); return new Date(now.getT
 
 type SalesOrder = {
   id: number;
+  transactionId?: string | null;
   customer: {
     name: string;
   };
@@ -17,6 +18,7 @@ type SalesOrder = {
 
 type PurchaseOrder = {
   id: number;
+  transactionId?: string | null;
   supplier: {
     name: string;
   };
@@ -356,12 +358,12 @@ export default function PaymentsPage() {
               {orderType === 'SALES'
                 ? salesOrders.map((order) => (
                     <option key={order.id} value={order.id}>
-                      Sales #{order.id} — {order.customer?.name}
+                      {order.transactionId ?? `ORD-${String(order.id).padStart(2, '0')}`} — {order.customer?.name}
                     </option>
                   ))
                 : purchaseOrders.map((order) => (
                     <option key={order.id} value={order.id}>
-                      Purchase #{order.id} — {order.supplier?.name}
+                      {order.transactionId ?? `PUR-${String(order.id).padStart(2, '0')}`} — {order.supplier?.name}
                     </option>
                   ))}
             </select>

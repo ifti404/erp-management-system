@@ -87,6 +87,7 @@ CREATE TABLE inventory (
 
 CREATE TABLE sales_orders (
     id BIGINT NOT NULL AUTO_INCREMENT,
+    transaction_id VARCHAR(40),
     customer_id BIGINT NOT NULL,
     order_date DATETIME(6) NOT NULL,
     due_date DATE,
@@ -98,12 +99,14 @@ CREATE TABLE sales_orders (
     notes VARCHAR(255),
     inventory_released BIT NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE KEY uk_sales_orders_transaction_id (transaction_id),
     KEY idx_sales_orders_customer_id (customer_id),
     CONSTRAINT fk_sales_orders_customer FOREIGN KEY (customer_id) REFERENCES customers (id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE purchase_orders (
     id BIGINT NOT NULL AUTO_INCREMENT,
+    transaction_id VARCHAR(40),
     supplier_id BIGINT NOT NULL,
     order_date DATETIME(6) NOT NULL,
     due_date DATE,
@@ -111,6 +114,7 @@ CREATE TABLE purchase_orders (
     total_amount DECIMAL(12,2) NOT NULL,
     notes VARCHAR(255),
     PRIMARY KEY (id),
+    UNIQUE KEY uk_purchase_orders_transaction_id (transaction_id),
     KEY idx_purchase_orders_supplier_id (supplier_id),
     CONSTRAINT fk_purchase_orders_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id)
 ) ENGINE=InnoDB;
@@ -188,6 +192,7 @@ CREATE TABLE expense_categories (
 
 CREATE TABLE expenses (
     id BIGINT NOT NULL AUTO_INCREMENT,
+    transaction_id VARCHAR(40),
     category_id BIGINT NOT NULL,
     amount DECIMAL(12,2) NOT NULL,
     expense_date DATE NOT NULL,
@@ -197,6 +202,7 @@ CREATE TABLE expenses (
     created_at DATETIME(6) NOT NULL,
     created_by VARCHAR(50) NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE KEY uk_expenses_transaction_id (transaction_id),
     KEY idx_expenses_date (expense_date),
     KEY idx_expenses_category (category_id),
     CONSTRAINT fk_expenses_category FOREIGN KEY (category_id) REFERENCES expense_categories (id)

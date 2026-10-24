@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { API_BASE, apiFetch } from '@/lib/api';
 
 type Party = { name: string; address?: string; phone?: string; email?: string };
-type Order = { id: number; orderDate: string; dueDate?: string | null; status: string; totalAmount: number; deliveryCharge?: number; notes?: string | null; customer?: Party; supplier?: Party };
+type Order = { id: number; transactionId?: string | null; orderDate: string; dueDate?: string | null; status: string; totalAmount: number; deliveryCharge?: number; notes?: string | null; customer?: Party; supplier?: Party };
 type Line = { id: number; product: { sku: string; name: string }; quantity: number; unitPrice?: number; unitCost?: number; subtotal: number };
 type Payment = { id: number; paymentDate: string; amount: number; paymentMethod: string; status: string; salesOrder?: { id: number }; purchaseOrder?: { id: number }; notes?: string };
 type Company = { businessName: string; address?: string; phone?: string; email?: string; taxNumber?: string; currencyCode: string; logoData?: string | null };

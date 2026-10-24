@@ -9,6 +9,9 @@ const API = API_BASE;
 type Customer = {
   id: number;
   name: string;
+  phone: string;
+  address: string | null;
+  email?: string | null;
 };
 
 type Product = {
@@ -20,6 +23,7 @@ type Product = {
 
 type SalesOrder = {
   id: number;
+  transactionId: string;
   customer: Customer;
   orderDate: string;
   dueDate: string | null;
@@ -90,6 +94,11 @@ export default function SalesPage() {
   // Order form
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [customerId, setCustomerId] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerLookup, setCustomerLookup] = useState<'idle' | 'checking' | 'found' | 'new' | 'error'>('idle');
+  const [transactionNumber, setTransactionNumber] = useState('');
   const [orderDate, setOrderDate] = useState(localDateTimeValue());
   const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState('PENDING');
@@ -160,6 +169,26 @@ export default function SalesPage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const phone = customerPhone.trim();
+    if (phone.length < 4) { setCustomerId(''); setCustomerLookup('idle'); return; }
+    setCustomerId(''); setCustomerLookup('checking');
+    let active = true;
+    const timer = window.setTimeout(() => {
+      apiFetch(`${API}/customers/lookup?phone=${encodeURIComponent(phone)}`)
+        .then(async (response) => {
+          if (!active) return;
+          if (response.ok) {
+            const customer = await response.json() as Customer;
+            if (!active) return;
+            setCustomerId(String(customer.id)); setCustomerName(customer.name); setCustomerAddress(customer.address ?? ''); setCustomerLookup('found');
+          } else if (response.status === 404) { setCustomerId(''); setCustomerLookup('new'); }
+          else setCustomerLookup('error');
+        }).catch(() => { if (active) setCustomerLookup('error'); });
+    }, 350);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [customerPhone]);
+
   const refreshData = async () => {
     const data = await fetchData();
     setOrders(data.orders);
@@ -174,6 +203,7 @@ export default function SalesPage() {
   const resetOrderForm = () => {
     setEditingOrderId(null);
     setCustomerId('');
+    setCustomerPhone(''); setCustomerName(''); setCustomerAddress(''); setCustomerLookup('idle'); setTransactionNumber('');
     setOrderDate(localDateTimeValue());
     setDueDate('');
     setStatus('PENDING');
@@ -213,7 +243,7 @@ export default function SalesPage() {
   const filteredOrders = orders.filter((order) => {
     const query = orderSearch.trim().toLowerCase();
     const matchesSearch = !query || [
-      String(order.id), order.customer?.name ?? '', order.status,
+      String(order.id), order.transactionId ?? '', order.customer?.name ?? '', order.status,
       order.courier ?? '', order.parcelId ?? '', order.notes ?? '',
     ].some((value) => value.toLowerCase().includes(query));
     const isOutstanding = !['CANCELLED', 'RETURNED'].includes(order.status) && balanceDue(order) > 0.001;
@@ -263,12 +293,33 @@ export default function SalesPage() {
       setError('Delivery charge must be zero or greater.');
       return;
     }
+    if (!customerPhone.trim() || !customerName.trim() || !customerAddress.trim()) {
+      setError('Enter the customer phone number, name, and address.'); return;
+    }
+    if (customerLookup === 'checking') { setError('Please wait for the customer phone lookup to finish.'); return; }
+    if (customerLookup === 'error') { setError('Could not check the customer database. Please try the phone number again.'); return; }
+    if (transactionNumber && !/^\d{1,30}$/.test(transactionNumber)) { setError('Transaction number must contain digits only.'); return; }
 
     setSaving(true);
 
     try {
+      let selectedCustomerId = customerId;
+      const customerData = { name: customerName.trim(), phone: customerPhone.trim(), address: customerAddress.trim() };
+      if (selectedCustomerId) {
+        const existing = customers.find((customer) => customer.id === Number(selectedCustomerId));
+        if (existing && (existing.name !== customerData.name || existing.address !== customerData.address || existing.phone !== customerData.phone)) {
+          const updatedCustomer = await apiFetch(`${API}/customers/${selectedCustomerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...customerData, email: existing.email ?? null }) });
+          if (!updatedCustomer.ok) throw new Error('Could not update the saved customer details.');
+        }
+      } else {
+        const customerResponse = await apiFetch(`${API}/customers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(customerData) });
+        if (!customerResponse.ok) throw new Error('Could not save this customer. Check the phone number and try again.');
+        const savedCustomer = await customerResponse.json() as Customer;
+        selectedCustomerId = String(savedCustomer.id);
+      }
       const orderData = {
-        customer: { id: Number(customerId) },
+        transactionId: transactionNumber.trim() ? `ORD-${transactionNumber.trim()}` : null,
+        customer: { id: Number(selectedCustomerId) },
         orderDate,
         dueDate: dueDate || null,
         status,
@@ -367,6 +418,8 @@ export default function SalesPage() {
   const editOrder = (order: SalesOrder) => {
     setEditingOrderId(order.id);
     setCustomerId(String(order.customer?.id ?? ''));
+    setCustomerPhone(order.customer?.phone ?? ''); setCustomerName(order.customer?.name ?? ''); setCustomerAddress(order.customer?.address ?? ''); setCustomerLookup('found');
+    setTransactionNumber(order.transactionId?.replace(/^ORD-/, '') ?? '');
     setOrderDate(order.orderDate.slice(0, 16));
     setDueDate(order.dueDate ?? '');
     setStatus(order.status);
@@ -504,21 +557,14 @@ export default function SalesPage() {
               className="mt-6 grid gap-5 md:grid-cols-2"
             >
               <div>
-                <label className="text-sm font-medium">Customer *</label>
-                <select
-                  value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                  required
-                  className={inputClass}
-                >
-                  <option value="">Select customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-sm font-medium">Customer phone *</label>
+                <input type="tel" autoComplete="tel" required value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone number" className={inputClass}/>
+                <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">{customerLookup === 'checking' ? 'Checking saved customers…' : customerLookup === 'found' ? 'Saved customer found. Name and address filled in.' : customerLookup === 'new' ? 'New customer — details will be saved with this order.' : customerLookup === 'error' ? 'Could not check saved customers; details can still be entered.' : 'Enter a phone number to check for an existing customer.'}</p>
               </div>
+
+              <div><label className="text-sm font-medium">Customer name *</label><input required value={customerName} onChange={(e) => setCustomerName(e.target.value)} maxLength={100} className={inputClass}/></div>
+              <div><label className="text-sm font-medium">Customer address *</label><input required value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} maxLength={255} className={inputClass}/></div>
+              <div><label className="text-sm font-medium">Transaction ID</label><div className="mt-1 flex overflow-hidden rounded-md border bg-background"><span className="grid place-items-center border-r bg-muted px-3 text-sm font-semibold text-muted-foreground">ORD-</span><input inputMode="numeric" pattern="[0-9]*" value={transactionNumber} onChange={(e) => setTransactionNumber(e.target.value.replace(/\D/g, ''))} placeholder="Auto" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none"/></div><p className="mt-1 text-xs text-muted-foreground">Leave blank to use the next order number.</p></div>
 
               <div>
                 <label className="text-sm font-medium">Order date *</label>
@@ -663,7 +709,7 @@ export default function SalesPage() {
                   <thead>
                     <tr className="border-b bg-muted/40 text-left">
                       {[
-                        'Order',
+                        'Trx ID',
                         'Customer',
                         'Date',
                         'Status',
@@ -691,7 +737,7 @@ export default function SalesPage() {
                         className="border-b last:border-0 hover:bg-muted/20"
                       >
                         <td className="px-4 py-3 text-sm font-medium">
-                          #{order.id}
+                          {order.transactionId || `ORD-${String(order.id).padStart(2, '0')}`}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {order.customer?.name ?? 'Unknown'}
@@ -795,7 +841,7 @@ export default function SalesPage() {
                 <option value="">Select sales order</option>
                 {orders.map((order) => (
                   <option key={order.id} value={order.id}>
-                    #{order.id} — {order.customer?.name ?? 'Unknown'}
+                    {order.transactionId || `ORD-${String(order.id).padStart(2, '0')}`} — {order.customer?.name ?? 'Unknown'}
                   </option>
                 ))}
               </select>

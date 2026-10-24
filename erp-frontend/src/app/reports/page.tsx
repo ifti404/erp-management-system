@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { API_BASE, apiFetch } from '@/lib/api';
 
-type Order = { id: number; orderDate: string; dueDate?: string | null; status: string; totalAmount: number; customer?: { name: string }; supplier?: { name: string } };
+type Order = { id: number; transactionId?: string | null; orderDate: string; dueDate?: string | null; status: string; totalAmount: number; customer?: { name: string }; supplier?: { name: string } };
 type Payment = { id: number; amount: number; paymentDate: string; status: string; salesOrder?: { id: number }; purchaseOrder?: { id: number } };
 type Inventory = { quantity: number; product: { name: string; sku: string; reorderLevel: number } };
 type SalesReturn = { id: number; salesOrderId: number; customerName: string; reason: string; settlementType: string; settlementStatus: string; returnAmount: number; refundAmount: number; createdAt: string; items: { productName: string; sku: string; quantity: number; restock: boolean }[] };
 type Expense = { id: number; category: { name: string }; amount: number; expenseDate: string; paymentMethod: string; reference?: string; notes?: string };
-type BalanceRow = { type: 'Sales' | 'Purchase'; id: number; party: string; date: string; dueDate?: string | null; status: string; total: number; paid: number; balance: number };
+type BalanceRow = { type: 'Sales' | 'Purchase'; id: number; transactionId: string; party: string; date: string; dueDate?: string | null; status: string; total: number; paid: number; balance: number };
 
 function inRange(date: string, from: string, to: string) {
   const value = date.slice(0, 10);
@@ -61,11 +61,11 @@ export default function ReportsPage() {
     const matches = (order: Order) => inRange(order.orderDate, from, to) && (status === 'ALL' || order.status === status);
     const salesRows: BalanceRow[] = sales.filter(matches).filter((order) => !['CANCELLED', 'RETURNED'].includes(order.status)).map((order) => {
       const total = Number(order.totalAmount); const returned = returns.filter((entry) => entry.salesOrderId === order.id).reduce((sum, entry) => sum + Number(entry.returnAmount), 0); const paid = paidSales.get(order.id) ?? 0;
-      return { type: 'Sales', id: order.id, party: order.customer?.name ?? '—', date: order.orderDate, dueDate: order.dueDate, status: order.status, total, paid, balance: Math.max(0, total - returned - paid) };
+      return { type: 'Sales', id: order.id, transactionId: order.transactionId ?? `ORD-${String(order.id).padStart(2, '0')}`, party: order.customer?.name ?? '—', date: order.orderDate, dueDate: order.dueDate, status: order.status, total, paid, balance: Math.max(0, total - returned - paid) };
     });
     const purchaseRows: BalanceRow[] = purchases.filter(matches).filter((order) => order.status !== 'CANCELLED').map((order) => {
       const total = Number(order.totalAmount); const paid = paidPurchases.get(order.id) ?? 0;
-      return { type: 'Purchase', id: order.id, party: order.supplier?.name ?? '—', date: order.orderDate, dueDate: order.dueDate, status: order.status, total, paid, balance: Math.max(0, total - paid) };
+      return { type: 'Purchase', id: order.id, transactionId: order.transactionId ?? `PUR-${String(order.id).padStart(2, '0')}`, party: order.supplier?.name ?? '—', date: order.orderDate, dueDate: order.dueDate, status: order.status, total, paid, balance: Math.max(0, total - paid) };
     });
     const activeSales = salesRows;
     const activePurchases = purchaseRows;
@@ -106,7 +106,7 @@ export default function ReportsPage() {
 
   function downloadCsv() {
     const headings = ['Type', 'Order', 'Customer or supplier', 'Order date', 'Status', 'Total', 'Net paid', 'Balance due'];
-    exportReport('gamma-erp-order-balances', headings, data.rows.map((row) => [row.type, `#${row.id}`, row.party, row.date.slice(0, 10), row.status, row.total.toFixed(2), row.paid.toFixed(2), row.balance.toFixed(2)]));
+    exportReport('gamma-erp-order-balances', headings, data.rows.map((row) => [row.type, row.transactionId, row.party, row.date.slice(0, 10), row.status, row.total.toFixed(2), row.paid.toFixed(2), row.balance.toFixed(2)]));
   }
 
   function downloadInventoryCsv() {
@@ -161,7 +161,7 @@ export default function ReportsPage() {
       <section className="panel p-5"><h2 className="font-semibold">Stock attention</h2><p className="mt-1 text-sm text-muted-foreground">{data.lowStock} product{data.lowStock === 1 ? '' : 's'} at or below reorder level. Use Low-stock CSV to share or work through the reorder list.</p></section>
       <section className="panel overflow-hidden">
         <div className="panel-heading"><div><h2>Unpaid and partly paid orders</h2><p>Balances include paid payments for these orders. Use filters above to narrow the list.</p></div></div>
-        {data.unpaid.length === 0 ? <p className="empty-state">No unpaid orders match these filters.</p> : <div className="overflow-x-auto"><table className="data-table min-w-[920px]"><thead><tr>{['Type', 'Order', 'Customer / supplier', 'Date', 'Due date', 'Status', 'Total', 'Paid', 'Balance due'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>{data.unpaid.map((row) => <tr key={`${row.type}-${row.id}`}><td>{row.type}</td><td>#{row.id}</td><td>{row.party}</td><td>{new Date(row.date).toLocaleDateString()}</td><td>{row.dueDate ?? '—'}</td><td>{row.status}</td><td>{money(row.total)}</td><td>{money(row.paid)}</td><td className="font-semibold">{money(row.balance)}</td></tr>)}</tbody></table></div>}
+        {data.unpaid.length === 0 ? <p className="empty-state">No unpaid orders match these filters.</p> : <div className="overflow-x-auto"><table className="data-table min-w-[920px]"><thead><tr>{['Type', 'Trx ID', 'Customer / supplier', 'Date', 'Due date', 'Status', 'Total', 'Paid', 'Balance due'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>{data.unpaid.map((row) => <tr key={`${row.type}-${row.id}`}><td>{row.type}</td><td>{row.transactionId}</td><td>{row.party}</td><td>{new Date(row.date).toLocaleDateString()}</td><td>{row.dueDate ?? '—'}</td><td>{row.status}</td><td>{money(row.total)}</td><td>{money(row.paid)}</td><td className="font-semibold">{money(row.balance)}</td></tr>)}</tbody></table></div>}
       </section>
     </>}
   </div>;

@@ -38,6 +38,7 @@ public class UserService {
 
     @Transactional
     public User createUser(User user) {
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) throw new IllegalArgumentException("Password is required");
         user.setPasswordHash(encodeIfNeeded(user.getPasswordHash()));
         if (user.getCreatedAt() == null) user.setCreatedAt(java.time.LocalDateTime.now());
         User saved = userRepository.save(user);
@@ -49,9 +50,18 @@ public class UserService {
     public User updateUser(Long id, User userDetails, String actorUsername) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        protectManagedTarget(user, actorUsername);
+        if (userDetails.getUsername() == null || userDetails.getUsername().isBlank()) throw new IllegalArgumentException("Username is required");
+        if (userRepository.findByUsernameIgnoreCase(userDetails.getUsername().trim()).filter(existing -> !existing.getId().equals(id)).isPresent())
+            throw new IllegalArgumentException("That username is already in use");
+        if (userDetails.getEmail() != null && !userDetails.getEmail().isBlank()
+                && userRepository.findByEmailIgnoreCase(userDetails.getEmail().trim()).filter(existing -> !existing.getId().equals(id)).isPresent())
+            throw new IllegalArgumentException("That email address is already in use");
+        if (userDetails.getRole() == null || userDetails.getRole().getId() == null) throw new IllegalArgumentException("Role is required");
+        var targetRole = roleRepository.findById(userDetails.getRole().getId()).orElseThrow(() -> new IllegalArgumentException("Role not found"));
 
         boolean remainsAdmin = Boolean.TRUE.equals(userDetails.getActive())
-                && "ADMIN".equalsIgnoreCase(userDetails.getRole().getName());
+                && "ADMIN".equalsIgnoreCase(targetRole.getName());
         boolean isCurrentAdmin = Boolean.TRUE.equals(user.getActive())
                 && "ADMIN".equalsIgnoreCase(user.getRole().getName());
         if (isCurrentAdmin && !remainsAdmin
@@ -65,10 +75,10 @@ public class UserService {
         boolean credentialsChanged = (userDetails.getPasswordHash() != null && !userDetails.getPasswordHash().isBlank())
                 || !user.getUsername().equals(userDetails.getUsername())
                 || !java.util.Objects.equals(user.getActive(), userDetails.getActive())
-                || !java.util.Objects.equals(user.getRole().getId(), userDetails.getRole().getId());
+                || !java.util.Objects.equals(user.getRole().getId(), targetRole.getId());
         if (credentialsChanged) rememberedSessions.revokeAll(user.getUsername());
 
-        user.setUsername(userDetails.getUsername());
+        user.setUsername(userDetails.getUsername().trim());
         if (userDetails.getPasswordHash() != null && !userDetails.getPasswordHash().isBlank()) {
             user.setPasswordHash(encodeIfNeeded(userDetails.getPasswordHash()));
         }
@@ -76,7 +86,7 @@ public class UserService {
         user.setEmail(userDetails.getEmail());
         user.setPhone(userDetails.getPhone());
         user.setActive(userDetails.getActive());
-        user.setRole(userDetails.getRole());
+        user.setRole(targetRole);
 
         User saved = userRepository.save(user);
         auditService.record("UPDATED", "USER", id, "username=" + saved.getUsername() + ", active=" + saved.getActive() + ", role=" + saved.getRole().getName());
@@ -87,6 +97,7 @@ public class UserService {
     public void deleteUser(Long id, String actorUsername) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        protectManagedTarget(user, actorUsername);
         if (user.getUsername().equals(actorUsername)) {
             throw new IllegalArgumentException("You cannot delete your own account");
         }
@@ -96,9 +107,10 @@ public class UserService {
     }
 
     @Transactional
-    public User setActive(Long id, boolean active) {
+    public User setActive(Long id, boolean active, String actorUsername) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        protectManagedTarget(user, actorUsername);
         protectLastActiveAdmin(user, active);
         user.setActive(active);
         if (!active) rememberedSessions.revokeAll(user.getUsername());
@@ -107,10 +119,13 @@ public class UserService {
         return saved;
     }
 
+    public User setActive(Long id, boolean active) { return setActive(id, active, null); }
+
     @Transactional
     public User setRole(Long id, Long roleId, String actorUsername) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        protectManagedTarget(user, actorUsername);
         var role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
         if (Boolean.TRUE.equals(user.getActive()) && "ADMIN".equalsIgnoreCase(user.getRole().getName())
@@ -130,13 +145,23 @@ public class UserService {
     }
 
     @Transactional
-    public void resetPassword(Long id, String password) {
+    public void resetPassword(Long id, String password, String actorUsername) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        protectManagedTarget(user, actorUsername);
         user.setPasswordHash(passwordEncoder.encode(password));
         rememberedSessions.revokeAll(user.getUsername());
         userRepository.save(user);
         auditService.record("PASSWORD_RESET", "USER", id, "Password reset by an administrator");
+    }
+
+    private void protectManagedTarget(User target, String actorUsername) {
+        if (!target.getUsername().equals(actorUsername) && "ADMIN".equalsIgnoreCase(target.getRole().getName())) {
+            throw new IllegalArgumentException("Administrator accounts are protected from changes by other users");
+        }
+        if (target.getUsername().equals(actorUsername) && "ADMIN".equalsIgnoreCase(target.getRole().getName())) {
+            throw new IllegalArgumentException("Manage your own administrator profile from User settings");
+        }
     }
 
     private void protectLastActiveAdmin(User user, boolean remainsActive) {

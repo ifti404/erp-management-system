@@ -89,15 +89,15 @@ export default function LoginPage() {
   }
 
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--workspace)] px-4 py-10 sm:px-6">
-    <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-24 size-80 rounded-full bg-teal-200/40 blur-3xl" />
-    <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -right-16 size-96 rounded-full bg-cyan-100/70 blur-3xl" />
-    <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_24px_80px_-32px_rgba(15,70,75,0.28)] backdrop-blur sm:p-9">
-      <div className="mb-7 flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-900/10"><Boxes className="size-6"/></span><div><p className="text-xs font-bold tracking-[0.16em] text-teal-700">GAMMA ERP</p><p className="mt-0.5 text-sm text-muted-foreground">Your business workspace</p></div></div>
+    <div aria-hidden="true" className="pointer-events-none absolute -left-28 -top-24 size-80 rounded-full bg-teal-200/40 blur-3xl dark:bg-teal-900/25" />
+    <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -right-16 size-96 rounded-full bg-cyan-100/70 blur-3xl dark:bg-cyan-950/30" />
+    <section className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_24px_80px_-32px_rgba(15,70,75,0.28)] backdrop-blur dark:border-border dark:bg-card/95 dark:shadow-black/30 sm:p-9">
+      <div className="mb-7 flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-900/10"><Boxes className="size-6"/></span><div><p className="text-xs font-bold tracking-[0.16em] text-teal-700 dark:text-teal-300">GAMMA ERP</p><p className="mt-0.5 text-sm text-muted-foreground">Your business workspace</p></div></div>
       <div><p className="eyebrow">WELCOME</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">{mode === 'signin' ? 'Good to see you' : 'Create your account'}</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{mode === 'signin' ? 'Sign in with your username or email address.' : 'Send your details to the business administrator for account activation.'}</p></div>
 
       <div className="mt-6 grid grid-cols-2 rounded-xl bg-muted/70 p-1" role="group" aria-label="Account access">
-        <button type="button" aria-pressed={mode === 'signin'} onClick={() => chooseMode('signin')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signin' ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Sign in</button>
-        <button type="button" aria-pressed={mode === 'signup'} onClick={() => chooseMode('signup')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signup' ? 'bg-white text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Sign up</button>
+        <button type="button" aria-pressed={mode === 'signin'} onClick={() => chooseMode('signin')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signin' ? 'bg-white text-foreground shadow-sm dark:bg-secondary' : 'text-muted-foreground hover:text-foreground'}`}>Sign in</button>
+        <button type="button" aria-pressed={mode === 'signup'} onClick={() => chooseMode('signup')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signup' ? 'bg-white text-foreground shadow-sm dark:bg-secondary' : 'text-muted-foreground hover:text-foreground'}`}>Sign up</button>
       </div>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
@@ -110,7 +110,7 @@ export default function LoginPage() {
           <label className="filter-field text-xs">Phone number<input type="tel" autoComplete="tel" maxLength={20} required value={phone} onChange={(event) => setPhone(event.target.value)} className={inputClass}/></label>
           <label className="filter-field text-xs">Email address<input type="email" autoComplete="email" maxLength={100} required value={email} onChange={(event) => setEmail(event.target.value)} className={inputClass}/></label>
           <label className="filter-field text-xs">Password<input type="password" autoComplete="new-password" minLength={10} maxLength={72} required value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass}/><span className="text-[11px] font-normal">Use 10–72 characters.</span></label>
-          <div className="flex gap-2 rounded-xl border border-teal-200 bg-teal-50/70 p-3 text-xs leading-relaxed text-teal-900"><LockKeyhole className="mt-0.5 size-4 shrink-0"/><p>Your account stays inactive until an administrator approves it. Your password is stored as a secure hash.</p></div>
+          <div className="flex gap-2 rounded-xl border border-teal-200 bg-teal-50/70 p-3 text-xs leading-relaxed text-teal-900 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-100"><LockKeyhole className="mt-0.5 size-4 shrink-0"/><p>Your account stays inactive until an administrator approves it. Your password is stored as a secure hash.</p></div>
         </>}
 
         {error && <p role="alert" className="alert-error">{error}</p>}

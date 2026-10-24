@@ -21,7 +21,6 @@ public class User {
     private String username;
 
     @Column(name = "password_hash", nullable = false, length = 255)
-    @NotBlank(message = "Password hash is required")
     @Size(max = 255, message = "Password hash must not exceed 255 characters")
     private String passwordHash;
 
