@@ -49,6 +49,9 @@ public class User {
     @Column(name = "theme_preference", nullable = false, length = 8)
     private String themePreference = "LIGHT";
 
+    @Column(name = "photo_data", columnDefinition = "LONGTEXT")
+    private String photoData;
+
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     @NotNull(message = "Role is required")
@@ -128,4 +131,6 @@ public class User {
 
     public String getThemePreference() { return themePreference; }
     public void setThemePreference(String themePreference) { this.themePreference = themePreference; }
+    public String getPhotoData() { return photoData; }
+    public void setPhotoData(String photoData) { this.photoData = photoData; }
 }

@@ -10,4 +10,5 @@ public record CompanySettingsRequest(
         @Size(max = 40) String phone,
         @Email @Size(max = 120) String email,
         @Size(max = 60) String taxNumber,
-        @NotBlank @Size(min = 3, max = 3) String currencyCode) {}
+        @NotBlank @Size(min = 3, max = 3) String currencyCode,
+        String logoData) {}

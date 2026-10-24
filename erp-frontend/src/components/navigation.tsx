@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { API_BASE, apiFetch, AUTH_STORAGE_KEY } from '@/lib/api';
-import { Activity, Boxes, ClipboardList, CreditCard, LayoutDashboard, LogOut, Package, Settings2, ShieldCheck, Tags, Truck, Users, Wallet, Receipt } from 'lucide-react';
+import { Activity, Boxes, ChevronDown, ClipboardList, CreditCard, LayoutDashboard, LogOut, Package, Settings2, ShieldCheck, Tags, Truck, Users, Wallet, Receipt } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const navigation: { name: string; href: string; icon: LucideIcon; group: string; admin?: boolean; permission?: string }[] = [
@@ -32,6 +32,7 @@ export function Navigation({ mobile = false, compact = false, expanded = false }
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   useEffect(() => {
     let active = true;
     apiFetch(`${API_BASE}/auth/me`).then((r) => r.ok ? r.json() : null)
@@ -55,8 +56,8 @@ export function Navigation({ mobile = false, compact = false, expanded = false }
 
   const groups = [...new Set(visible.map((item) => item.group))];
   const iconOnly = compact && !expanded;
-  return <nav aria-label="Main navigation" className={`mt-7 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto ${iconOnly ? 'items-center px-2' : 'px-4'} pr-1`}>
-    {groups.map((group) => <div key={group} className={`space-y-1 ${iconOnly ? 'w-full' : ''}`}>{!iconOnly && <p className="px-3 text-[10px] font-semibold tracking-[0.16em] text-slate-400">{group}</p>}{visible.filter((item) => item.group === group).map(({ name, href, icon: Icon }) => <Link key={href} href={href} aria-label={name} title={iconOnly ? name : undefined} aria-current={activeFor(href) ? 'page' : undefined} className={`group flex items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${iconOnly ? 'justify-center px-0' : 'px-3'} ${activeFor(href) ? 'bg-white/10 font-semibold text-white shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}><Icon className={`size-4 shrink-0 ${activeFor(href) ? 'text-teal-300' : 'text-slate-400 group-hover:text-slate-200'}`} aria-hidden="true"/>{!iconOnly && <span>{name}</span>}{!iconOnly && activeFor(href) && <span className="ml-auto size-1.5 rounded-full bg-teal-300"/>}</Link>)}</div>)}
+  return <nav aria-label="Main navigation" className={`sidebar-scroll mt-7 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto ${iconOnly ? 'items-center px-2' : 'px-4'} pr-1`}>
+    {groups.map((group) => { const collapsed = collapsedGroups.includes(group); return <div key={group} className={`space-y-1 ${iconOnly ? 'w-full' : ''}`}>{!iconOnly && <button type="button" aria-expanded={!collapsed} onClick={() => setCollapsedGroups((current) => collapsed ? current.filter((item) => item !== group) : [...current, group])} className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-[10px] font-semibold tracking-[0.16em] text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"><span>{group}</span><ChevronDown className={`size-3.5 transition-transform ${collapsed ? '-rotate-90' : ''}`}/></button>}{(!collapsed || iconOnly) && visible.filter((item) => item.group === group).map(({ name, href, icon: Icon }) => <Link key={href} href={href} aria-label={name} title={iconOnly ? name : undefined} aria-current={activeFor(href) ? 'page' : undefined} className={`group flex items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${iconOnly ? 'justify-center px-0' : 'px-3'} ${activeFor(href) ? 'bg-white/10 font-semibold text-white shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}><Icon className={`size-4 shrink-0 ${activeFor(href) ? 'text-teal-300' : 'text-slate-400 group-hover:text-slate-200'}`} aria-hidden="true"/>{!iconOnly && <span>{name}</span>}{!iconOnly && activeFor(href) && <span className="ml-auto size-1.5 rounded-full bg-teal-300"/>}</Link>)}</div>; })}
     <div className={`mt-auto border-t border-white/10 pt-4 ${iconOnly ? 'w-full' : ''}`}><button type="button" aria-label="Sign out" title={iconOnly ? 'Sign out' : undefined} onClick={() => void signOut()} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white ${iconOnly ? 'justify-center px-0' : 'px-3'}`}><LogOut className="size-4"/>{!iconOnly && 'Sign out'}</button>{!iconOnly && <button type="button" onClick={() => void signOut(true)} className="mt-1 w-full rounded-xl px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-red-300">Sign out everywhere</button>}</div>
   </nav>;
 }

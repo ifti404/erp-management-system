@@ -10,6 +10,8 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,7 +83,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/settings/company/**").hasAuthority("SETTINGS_MANAGE")
                         .requestMatchers("/api/**").denyAll()
                         .anyRequest().denyAll())
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(basic -> basic.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(new RememberedSessionFilter(sessions), BasicAuthenticationFilter.class)
                 .build();
     }

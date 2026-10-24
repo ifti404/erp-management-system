@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE, AUTH_STORAGE_KEY, fetchWithCsrf } from '@/lib/api';
-import { Boxes, CheckCircle2, LockKeyhole } from 'lucide-react';
+import { Boxes, CheckCircle2, Eye, EyeOff, LockKeyhole } from 'lucide-react';
 
 type Mode = 'signin' | 'signup';
 const inputClass = 'control min-h-12 rounded-xl px-4 text-base';
@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -102,7 +103,7 @@ export default function LoginPage() {
       <form onSubmit={submit} className="mt-6 space-y-4">
         {mode === 'signin' ? <>
           <label className="filter-field text-xs">Username or email<input autoComplete="username" required value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="you@example.com" className={inputClass}/></label>
-          <label className="filter-field text-xs">Password<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className={inputClass}/></label>
+          <label className="filter-field text-xs">Password<span className="relative block"><input type={showPassword ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className={`${inputClass} pr-12`}/><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword((visible) => !visible)} className="absolute inset-y-0 right-2 grid w-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">{showPassword ? <EyeOff className="size-4" aria-hidden="true"/> : <Eye className="size-4" aria-hidden="true"/>}</button></span></label>
           <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border/80 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground"><input type="checkbox" checked={rememberDevice} onChange={(event) => setRememberDevice(event.target.checked)} className="mt-0.5 accent-teal-700"/><span>Keep me signed in on this device for up to 30 days</span></label>
         </> : <>
           <label className="filter-field text-xs">Username<input autoComplete="username" minLength={3} maxLength={50} pattern="[A-Za-z0-9._-]+" required value={username} onChange={(event) => setUsername(event.target.value)} className={inputClass}/></label>

@@ -37,8 +37,9 @@ public class AuthController {
         this.registration = registration;
         this.users = users;
     }
-    public record CurrentUser(String username, List<String> roles, String themePreference, List<String> permissions) {}
+    public record CurrentUser(String username, String fullName, String photoData, List<String> roles, String themePreference, List<String> permissions) {}
     public record ThemeRequest(String themePreference) {}
+    public record ProfilePhotoRequest(String photoData) {}
 
     @GetMapping("/csrf")
     public java.util.Map<String, String> csrf(CsrfToken token) {
@@ -99,7 +100,17 @@ public class AuthController {
     @GetMapping("/me")
     public CurrentUser me(Authentication authentication) {
         var user = users.findByUsername(authentication.getName()).orElseThrow();
-        return new CurrentUser(authentication.getName(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+        return new CurrentUser(authentication.getName(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+                user.getThemePreference(), effectivePermissions(user));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/profile/photo")
+    @Transactional
+    public CurrentUser setProfilePhoto(Authentication authentication, @RequestBody ProfilePhotoRequest request) {
+        var user = users.findByUsername(authentication.getName()).orElseThrow();
+        user.setPhotoData(com.ifti.erp.security.ImageDataValidator.validate(request == null ? null : request.photoData()));
+        users.save(user);
+        return new CurrentUser(user.getUsername(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
                 user.getThemePreference(), effectivePermissions(user));
     }
 
@@ -113,7 +124,7 @@ public class AuthController {
         var user = users.findByUsername(authentication.getName()).orElseThrow();
         user.setThemePreference(request.themePreference().toUpperCase());
         users.save(user);
-        return new CurrentUser(user.getUsername(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+        return new CurrentUser(user.getUsername(), user.getFullName(), user.getPhotoData(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
                 user.getThemePreference(), effectivePermissions(user));
     }
 

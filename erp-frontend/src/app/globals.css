@@ -168,6 +168,8 @@ input[type="date"], input[type="datetime-local"] { min-height: 2.75rem; padding-
 .app-main main, .app-main .page-stack { isolation: isolate; }
 .mobile-nav::-webkit-scrollbar { display: none; }
 .mobile-nav { scrollbar-width: none; }
+.sidebar-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.sidebar-scroll::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

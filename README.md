@@ -264,6 +264,11 @@ access until the administrator selects View and Manage permissions. ADMIN
 always keeps full access. Run V6 and V7 before deploying the new backend; the
 backend validates the database schema at startup.
 
+Before deploying profile photos and the business logo, run
+`erp/database/migrations/V8__profile_and_business_photos.sql` once after V7.
+It adds nullable image-data columns; existing accounts and company settings
+remain unchanged. The app accepts PNG and JPEG images up to 2 MB.
+
 The sign-in and sign-up forms now send a CSRF token with browser write requests.
 Use the supplied local browser at `http://localhost:3000` for development.
 

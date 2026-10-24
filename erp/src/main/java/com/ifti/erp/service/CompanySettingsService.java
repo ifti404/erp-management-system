@@ -25,6 +25,7 @@ public class CompanySettingsService {
         settings.setEmail(blankToNull(request.email()));
         settings.setTaxNumber(blankToNull(request.taxNumber()));
         settings.setCurrencyCode(request.currencyCode().trim().toUpperCase(java.util.Locale.ROOT));
+        if (request.logoData() != null) settings.setLogoData(com.ifti.erp.security.ImageDataValidator.validate(request.logoData()));
         CompanySettings saved = repository.save(settings);
         audit.record("UPDATED", "COMPANY_SETTINGS", 1L, "business name " + previous + " -> " + saved.getBusinessName());
         return saved;

@@ -18,6 +18,7 @@ CREATE TABLE company_settings (
     email VARCHAR(120),
     tax_number VARCHAR(60),
     currency_code VARCHAR(3) NOT NULL,
+    logo_data LONGTEXT,
     updated_at DATETIME(6) NOT NULL,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
@@ -169,6 +170,7 @@ CREATE TABLE users (
     is_active BIT NOT NULL,
     created_at DATETIME(6) NOT NULL,
     theme_preference VARCHAR(8) NOT NULL DEFAULT 'LIGHT',
+    photo_data LONGTEXT,
     role_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     KEY idx_users_role_id (role_id),

@@ -21,6 +21,8 @@ public class CompanySettings {
     private String taxNumber;
     @Column(name = "currency_code", nullable = false, length = 3)
     private String currencyCode = "BDT";
+    @Column(name = "logo_data", columnDefinition = "LONGTEXT")
+    private String logoData;
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -44,5 +46,7 @@ public class CompanySettings {
     public void setTaxNumber(String taxNumber) { this.taxNumber = taxNumber; }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+    public String getLogoData() { return logoData; }
+    public void setLogoData(String logoData) { this.logoData = logoData; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
