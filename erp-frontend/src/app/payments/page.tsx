@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { API_BASE, apiFetch } from '@/lib/api';
 
 const API = API_BASE;
+function localDateTimeValue() { const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 
 type SalesOrder = {
   id: number;
@@ -11,6 +12,7 @@ type SalesOrder = {
     name: string;
   };
   totalAmount: number;
+  amountDue?: number;
 };
 
 type PurchaseOrder = {
@@ -19,6 +21,7 @@ type PurchaseOrder = {
     name: string;
   };
   totalAmount: number;
+  amountDue?: number;
 };
 
 type Payment = {
@@ -44,7 +47,7 @@ export default function PaymentsPage() {
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
 
-  const [paymentDate, setPaymentDate] = useState('');
+  const [paymentDate, setPaymentDate] = useState(localDateTimeValue());
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [status, setStatus] = useState('PENDING');
@@ -53,6 +56,7 @@ export default function PaymentsPage() {
   const [notes, setNotes] = useState('');
 
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const fetchData = async (): Promise<PaymentsPageData> => {
     const [paymentsResponse, salesOrdersResponse, purchaseOrdersResponse] =
@@ -113,7 +117,7 @@ export default function PaymentsPage() {
   };
 
   const resetForm = () => {
-    setPaymentDate('');
+    setPaymentDate(localDateTimeValue());
     setAmount('');
     setPaymentMethod('CASH');
     setStatus('PENDING');
@@ -125,6 +129,8 @@ export default function PaymentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
 
     const paymentData = {
       paymentDate,
@@ -150,6 +156,7 @@ export default function PaymentsPage() {
 
     const method = editingId ? 'PUT' : 'POST';
 
+    try {
     const response = await apiFetch(url, {
       method,
       headers: {
@@ -167,6 +174,11 @@ export default function PaymentsPage() {
 
     resetForm();
     await refreshData();
+    } catch {
+      alert('Could not save the payment. Check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const editPayment = (payment: Payment) => {
@@ -190,6 +202,15 @@ export default function PaymentsPage() {
     }
 
     setNotes(payment.notes || '');
+  };
+
+  const selectedOrder = (orderType === 'SALES' ? salesOrders : purchaseOrders).find((order) => String(order.id) === orderId);
+  const selectOrder = (value: string) => {
+    setOrderId(value);
+    if (!editingId) {
+      const selected = (orderType === 'SALES' ? salesOrders : purchaseOrders).find((order) => String(order.id) === value);
+      setAmount(selected ? Number(selected.amountDue ?? selected.totalAmount).toFixed(2) : '');
+    }
   };
 
   const deletePayment = async (id: number) => {
@@ -312,6 +333,7 @@ export default function PaymentsPage() {
               onChange={(e) => {
                 setOrderType(e.target.value);
                 setOrderId('');
+                if (!editingId) setAmount('');
               }}
               required
               className={inputClass}
@@ -325,7 +347,7 @@ export default function PaymentsPage() {
             <label className="mb-1.5 block text-sm font-medium">Order</label>
             <select
               value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
+              onChange={(e) => selectOrder(e.target.value)}
               required
               className={inputClass}
             >
@@ -345,6 +367,8 @@ export default function PaymentsPage() {
             </select>
           </div>
 
+          {selectedOrder && <p className="md:col-span-2 -mt-2 text-xs text-muted-foreground">Outstanding balance: <strong className="text-foreground">৳{Number(selectedOrder.amountDue ?? selectedOrder.totalAmount).toFixed(2)}</strong> — prefilled as the payment amount; adjust it if recording a partial payment.</p>}
+
           <div>
             <label className="mb-1.5 block text-sm font-medium">Notes</label>
             <input
@@ -359,9 +383,10 @@ export default function PaymentsPage() {
           <div className="flex items-end gap-2">
             <button
               type="submit"
+              disabled={saving}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
-              {editingId ? 'Update Payment' : 'Add Payment'}
+              {saving ? 'Saving…' : editingId ? 'Update Payment' : 'Add Payment'}
             </button>
 
             {editingId && (
@@ -470,16 +495,6 @@ export default function PaymentsPage() {
               ))}
               {filteredPayments.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">{payments.length === 0 ? 'No payment records yet.' : `No payments match “${searchTerm}”.`}</td></tr>}
 
-              {payments.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-12 text-center text-muted-foreground"
-                  >
-                    No payments found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

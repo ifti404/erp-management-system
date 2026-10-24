@@ -27,8 +27,15 @@ public class RememberedSessionFilter extends OncePerRequestFilter {
                 if (!RememberedSessionService.COOKIE_NAME.equals(cookie.getName())) continue;
                 sessions.authenticate(cookie.getValue()).ifPresent(user -> {
                     String role = "ROLE_" + user.getRole().getName().trim().toUpperCase(java.util.Locale.ROOT);
+                    var authorities = new java.util.HashSet<SimpleGrantedAuthority>();
+                    authorities.add(new SimpleGrantedAuthority(role));
+                    if ("ADMIN".equalsIgnoreCase(user.getRole().getName())) {
+                        com.ifti.erp.security.PermissionCatalog.ALL.forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+                    } else {
+                        user.getRole().getPermissions().forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+                    }
                     var auth = new UsernamePasswordAuthenticationToken(user.getUsername(), null,
-                            java.util.List.of(new SimpleGrantedAuthority(role)));
+                            authorities);
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 });

@@ -16,6 +16,9 @@ import java.util.Optional;
 @Service
 public class PaymentService {
 
+    public record OrderParty(String name) {}
+    public record UnpaidOrder(Long id, BigDecimal totalAmount, BigDecimal amountDue, OrderParty customer, OrderParty supplier) {}
+
     private final PaymentRepository paymentRepository;
     private final SalesOrderRepository salesOrderRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -219,7 +222,7 @@ public class PaymentService {
     auditService.record("UPDATED", "PAYMENT", id, previous + " -> " + paymentDescription(saved));
     return saved;
 }
-    public List<SalesOrder> getUnpaidSalesOrders() {
+    public List<UnpaidOrder> getUnpaidSalesOrders() {
 
     List<SalesOrder> orders = salesOrderRepository.findAll();
 
@@ -233,9 +236,13 @@ public class PaymentService {
                 BigDecimal netTotal = order.getTotalAmount().subtract(salesReturnRepository.totalReturnedValue(order.getId())).max(BigDecimal.ZERO);
                 return paid.compareTo(netTotal) < 0;
             })
+            .map(order -> new UnpaidOrder(order.getId(), order.getTotalAmount(), order.getTotalAmount()
+                    .subtract(salesReturnRepository.totalReturnedValue(order.getId()))
+                    .subtract(paymentRepository.calculateNetCollectedAmountBySalesOrderId(order.getId())).max(BigDecimal.ZERO),
+                    new OrderParty(order.getCustomer().getName()), null))
             .toList();
 }
-public List<PurchaseOrder> getUnpaidPurchaseOrders() {
+public List<UnpaidOrder> getUnpaidPurchaseOrders() {
 
     List<PurchaseOrder> orders = purchaseOrderRepository.findAll();
 
@@ -249,6 +256,9 @@ public List<PurchaseOrder> getUnpaidPurchaseOrders() {
 
                 return paid.compareTo(order.getTotalAmount()) < 0;
             })
+            .map(order -> new UnpaidOrder(order.getId(), order.getTotalAmount(), order.getTotalAmount()
+                    .subtract(paymentRepository.calculatePaidAmountByPurchaseOrderId(order.getId())).max(BigDecimal.ZERO),
+                    null, new OrderParty(order.getSupplier().getName())))
             .toList();
 }
 

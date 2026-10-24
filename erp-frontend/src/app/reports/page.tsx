@@ -7,6 +7,7 @@ type Order = { id: number; orderDate: string; dueDate?: string | null; status: s
 type Payment = { id: number; amount: number; paymentDate: string; status: string; salesOrder?: { id: number }; purchaseOrder?: { id: number } };
 type Inventory = { quantity: number; product: { name: string; sku: string; reorderLevel: number } };
 type SalesReturn = { id: number; salesOrderId: number; customerName: string; reason: string; settlementType: string; settlementStatus: string; returnAmount: number; refundAmount: number; createdAt: string; items: { productName: string; sku: string; quantity: number; restock: boolean }[] };
+type Expense = { id: number; category: { name: string }; amount: number; expenseDate: string; paymentMethod: string; reference?: string; notes?: string };
 type BalanceRow = { type: 'Sales' | 'Purchase'; id: number; party: string; date: string; dueDate?: string | null; status: string; total: number; paid: number; balance: number };
 
 function inRange(date: string, from: string, to: string) {
@@ -26,6 +27,8 @@ export default function ReportsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [returns, setReturns] = useState<SalesReturn[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [format, setFormat] = useState<'CSV' | 'JSON' | 'PDF'>('CSV');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -34,12 +37,12 @@ export default function ReportsPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([apiFetch(`${API_BASE}/sales-orders`), apiFetch(`${API_BASE}/purchase-orders`), apiFetch(`${API_BASE}/payments`), apiFetch(`${API_BASE}/inventory`), apiFetch(`${API_BASE}/sales-returns`)]).then(async (responses) => {
+    Promise.all([apiFetch(`${API_BASE}/sales-orders`), apiFetch(`${API_BASE}/purchase-orders`), apiFetch(`${API_BASE}/payments`), apiFetch(`${API_BASE}/inventory`), apiFetch(`${API_BASE}/sales-returns`), apiFetch(`${API_BASE}/expenses`)]).then(async (responses) => {
       if (responses.some((response) => !response.ok)) throw new Error('Could not load reports. Check that the backend is running.');
       return Promise.all(responses.map((response) => response.json()));
-    }).then(([salesData, purchaseData, paymentData, inventoryData, returnData]) => {
+    }).then(([salesData, purchaseData, paymentData, inventoryData, returnData, expenseData]) => {
       if (!active) return;
-      setSales(salesData as Order[]); setPurchases(purchaseData as Order[]); setPayments(paymentData as Payment[]); setInventory(inventoryData as Inventory[]); setReturns(returnData as SalesReturn[]);
+      setSales(salesData as Order[]); setPurchases(purchaseData as Order[]); setPayments(paymentData as Payment[]); setInventory(inventoryData as Inventory[]); setReturns(returnData as SalesReturn[]); setExpenses(expenseData as Expense[]);
     }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Could not load reports.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -74,10 +77,11 @@ export default function ReportsPage() {
       purchaseOutstanding: activePurchases.reduce((sum, row) => sum + row.balance, 0),
       lowStock: inventory.filter((item) => item.quantity <= item.product.reorderLevel).length,
       returnTotal: returns.filter((entry) => inRange(entry.createdAt, from, to)).reduce((sum, entry) => sum + Number(entry.returnAmount), 0),
+      expenseTotal: expenses.filter((entry) => inRange(entry.expenseDate, from, to)).reduce((sum, entry) => sum + Number(entry.amount), 0),
       receivedInPeriod, paidOutInPeriod,
       unpaid: [...salesRows, ...purchaseRows].filter((row) => row.balance > 0),
     };
-  }, [from, inventory, payments, purchases, returns, sales, status, to]);
+  }, [expenses, from, inventory, payments, purchases, returns, sales, status, to]);
 
   const aging = useMemo(() => {
     const buckets = [
@@ -102,28 +106,33 @@ export default function ReportsPage() {
 
   function downloadCsv() {
     const headings = ['Type', 'Order', 'Customer or supplier', 'Order date', 'Status', 'Total', 'Net paid', 'Balance due'];
-    const lines = [headings, ...data.rows.map((row) => [row.type, `#${row.id}`, row.party, row.date.slice(0, 10), row.status, row.total.toFixed(2), row.paid.toFixed(2), row.balance.toFixed(2)])]
-      .map((line) => line.map(csvCell).join(',')).join('\r\n');
-    downloadFile('gamma-erp-order-balances.csv', lines);
+    exportReport('gamma-erp-order-balances', headings, data.rows.map((row) => [row.type, `#${row.id}`, row.party, row.date.slice(0, 10), row.status, row.total.toFixed(2), row.paid.toFixed(2), row.balance.toFixed(2)]));
   }
 
   function downloadInventoryCsv() {
     const low = inventory.filter((item) => item.quantity <= item.product.reorderLevel);
-    const lines = [['Product', 'SKU', 'Quantity available', 'Reorder level'], ...low.map((item) => [item.product.name, item.product.sku, item.quantity, item.product.reorderLevel])]
-      .map((line) => line.map(csvCell).join(',')).join('\r\n');
-    downloadFile('gamma-erp-low-stock.csv', lines);
+    exportReport('gamma-erp-low-stock', ['Product', 'SKU', 'Quantity available', 'Reorder level'], low.map((item) => [item.product.name, item.product.sku, item.quantity, item.product.reorderLevel]));
   }
 
   function downloadReturnsCsv() {
     const rows = returns.filter((entry) => inRange(entry.createdAt, from, to));
-    const lines = [['Return', 'Sales order', 'Customer', 'Date', 'Reason', 'Settlement type', 'Settlement status', 'Returned value', 'Cash refund', 'Products'], ...rows.map((entry) => [entry.id, entry.salesOrderId, entry.customerName, entry.createdAt.slice(0, 10), entry.reason, entry.settlementType, entry.settlementStatus, Number(entry.returnAmount).toFixed(2), Number(entry.refundAmount).toFixed(2), entry.items.map((item) => `${item.quantity} x ${item.productName}${item.restock ? ' (restocked)' : ''}`).join('; ')])]
-      .map((line) => line.map(csvCell).join(',')).join('\r\n');
-    downloadFile('gamma-erp-sales-returns.csv', lines);
+    exportReport('gamma-erp-sales-returns', ['Return', 'Sales order', 'Customer', 'Date', 'Reason', 'Settlement type', 'Settlement status', 'Returned value', 'Cash refund', 'Products'], rows.map((entry) => [entry.id, entry.salesOrderId, entry.customerName, entry.createdAt.slice(0, 10), entry.reason, entry.settlementType, entry.settlementStatus, Number(entry.returnAmount).toFixed(2), Number(entry.refundAmount).toFixed(2), entry.items.map((item) => `${item.quantity} x ${item.productName}${item.restock ? ' (restocked)' : ''}`).join('; ')]));
   }
 
-  function downloadFile(filename: string, contents: string) {
-    const url = URL.createObjectURL(new Blob(['\uFEFF', contents], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
+  function downloadExpenses() {
+    const rows = expenses.filter((entry) => inRange(entry.expenseDate, from, to));
+    exportReport('gamma-erp-expenses', ['Date', 'Category', 'Amount', 'Payment method', 'Reference', 'Notes'], rows.map((entry) => [entry.expenseDate, entry.category.name, Number(entry.amount).toFixed(2), entry.paymentMethod, entry.reference ?? '', entry.notes ?? '']));
+  }
+
+  function exportReport(name: string, headings: string[], rows: (string | number)[][]) {
+    if (format === 'PDF') { window.print(); return; }
+    const extension = format.toLowerCase();
+    const contents = format === 'JSON'
+      ? JSON.stringify(rows.map((row) => Object.fromEntries(headings.map((heading, index) => [heading, row[index]]))), null, 2)
+      : [headings, ...rows].map((line) => line.map(csvCell).join(',')).join('\r\n');
+    const mime = format === 'JSON' ? 'application/json;charset=utf-8' : 'text/csv;charset=utf-8';
+    const url = URL.createObjectURL(new Blob([format === 'CSV' ? '\uFEFF' : '', contents], { type: mime }));
+    const link = document.createElement('a'); link.href = url; link.download = `${name}.${extension}`; link.click(); URL.revokeObjectURL(url);
   }
 
   return <div className="page-stack">
@@ -133,16 +142,18 @@ export default function ReportsPage() {
         <label className="filter-field">From<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="control" /></label>
         <label className="filter-field">To<input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="control" /></label>
         <label className="filter-field">Order status<select value={status} onChange={(event) => setStatus(event.target.value)} className="control"><option value="ALL">All statuses</option>{['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'ORDERED', 'PARTIALLY_RECEIVED', 'RECEIVED'].map((value) => <option key={value}>{value}</option>)}</select></label>
-        <button type="button" onClick={downloadCsv} disabled={loading || data.rows.length === 0} className="button-primary">Orders CSV</button>
-        <button type="button" onClick={downloadInventoryCsv} disabled={loading || data.lowStock === 0} className="button-secondary">Low-stock CSV</button>
-        <button type="button" onClick={downloadReturnsCsv} disabled={loading || returns.length === 0} className="button-secondary">Returns CSV</button>
+        <label className="filter-field">File format<select className="control" value={format} onChange={(event) => setFormat(event.target.value as 'CSV' | 'JSON' | 'PDF')}><option value="CSV">CSV spreadsheet</option><option value="JSON">JSON data</option><option value="PDF">Print / Save as PDF</option></select></label>
+        <button type="button" onClick={downloadCsv} disabled={loading || data.rows.length === 0} className="button-primary">Export orders</button>
+        <button type="button" onClick={downloadInventoryCsv} disabled={loading || data.lowStock === 0} className="button-secondary">Export low stock</button>
+        <button type="button" onClick={downloadReturnsCsv} disabled={loading || returns.length === 0} className="button-secondary">Export returns</button>
+        <button type="button" onClick={downloadExpenses} disabled={loading || expenses.length === 0} className="button-secondary">Export expenses</button>
       </div>
     </header>
     {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
     {loading ? <p className="text-sm text-muted-foreground">Loading reports…</p> : <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[
-          ['Sales orders', money(data.salesTotal)], ['Customers owe', money(data.salesOutstanding)], ['Received in selected dates', money(data.receivedInPeriod)], ['Returns in selected dates', money(data.returnTotal)],
+          ['Sales orders', money(data.salesTotal)], ['Customers owe', money(data.salesOutstanding)], ['Received in selected dates', money(data.receivedInPeriod)], ['Returns in selected dates', money(data.returnTotal)], ['Expenses in selected dates', money(data.expenseTotal)],
           ['Purchase orders', money(data.purchaseTotal)], ['Owed to suppliers', money(data.purchaseOutstanding)], ['Paid in selected dates', money(data.paidOutInPeriod)],
         ].map(([label, value]) => <article key={label} className="panel p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p></article>)}
       </section>

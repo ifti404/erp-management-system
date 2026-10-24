@@ -244,6 +244,26 @@ order balance; only the part that exceeds the remaining unpaid balance is due
 as a cash refund. Refund payments are created from the return record and are
 not editable as ordinary payments. Redeemable store credit is not included.
 
+### Expenses and personal display settings
+
+Before deploying the expense tracker and saved light/dark preference, back up
+`erp_db` and run `erp/database/migrations/V6__expenses_and_theme_preferences.sql`
+once in MySQL Workbench. It adds six starter expense categories, expense record
+tables, and a default light-mode setting for existing users. Do not run V6 again.
+The backend uses schema validation and will not automatically update the hosted
+database. The fresh-install schema in `erp/database/showcase-schema.sql` already
+includes these additions.
+
+### Staff role permissions
+
+Before deploying role-based access, back up `erp_db` and run
+`erp/database/migrations/V7__role_permissions.sql` once, after V6. It creates
+the role-permission table and preserves current access for existing staff so
+an administrator can narrow it from the Roles screen. New roles start with no
+access until the administrator selects View and Manage permissions. ADMIN
+always keeps full access. Run V6 and V7 before deploying the new backend; the
+backend validates the database schema at startup.
+
 The sign-in and sign-up forms now send a CSRF token with browser write requests.
 Use the supplied local browser at `http://localhost:3000` for development.
 
@@ -255,6 +275,7 @@ At startup it creates that account only if the username does not already exist.
 The password is stored as a one-way hash. Keep it private and out of source
 control. Existing bcrypt hashes are accepted. `/api/users` and `/api/roles` are
 restricted to users with the `ADMIN` role. Other API routes require sign-in.
+Business API sections also enforce the role's View and Manage permissions.
 By default, sign-in lasts for the browser session and expires on the server
 after 12 hours. The optional “Remember this device” checkbox keeps that browser
 signed in for up to 30 days using a random, revocable HttpOnly cookie; the

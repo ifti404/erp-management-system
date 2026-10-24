@@ -24,17 +24,21 @@ public class AuthController {
     private final com.ifti.erp.service.RememberedSessionService sessions;
     private final com.ifti.erp.service.AuditService audit;
     private final RegistrationService registration;
+    private final com.ifti.erp.repository.UserRepository users;
     @org.springframework.beans.factory.annotation.Value("${app.auth.cookie-secure:false}")
     private boolean secureCookie;
 
     public AuthController(com.ifti.erp.service.RememberedSessionService sessions,
                           com.ifti.erp.service.AuditService audit,
-                          RegistrationService registration) {
+                          RegistrationService registration,
+                          com.ifti.erp.repository.UserRepository users) {
         this.sessions = sessions;
         this.audit = audit;
         this.registration = registration;
+        this.users = users;
     }
-    public record CurrentUser(String username, List<String> roles) {}
+    public record CurrentUser(String username, List<String> roles, String themePreference, List<String> permissions) {}
+    public record ThemeRequest(String themePreference) {}
 
     @GetMapping("/csrf")
     public java.util.Map<String, String> csrf(CsrfToken token) {
@@ -94,8 +98,27 @@ public class AuthController {
 
     @GetMapping("/me")
     public CurrentUser me(Authentication authentication) {
-        return new CurrentUser(authentication.getName(),
-                authentication.getAuthorities().stream()
-                        .map(authority -> authority.getAuthority()).toList());
+        var user = users.findByUsername(authentication.getName()).orElseThrow();
+        return new CurrentUser(authentication.getName(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+                user.getThemePreference(), effectivePermissions(user));
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/preferences/theme")
+    @Transactional
+    public CurrentUser setTheme(Authentication authentication, @RequestBody ThemeRequest request) {
+        if (request == null || request.themePreference() == null ||
+                !List.of("LIGHT", "DARK").contains(request.themePreference().toUpperCase())) {
+            throw new IllegalArgumentException("Theme must be LIGHT or DARK");
+        }
+        var user = users.findByUsername(authentication.getName()).orElseThrow();
+        user.setThemePreference(request.themePreference().toUpperCase());
+        users.save(user);
+        return new CurrentUser(user.getUsername(), List.of("ROLE_" + user.getRole().getName().toUpperCase(java.util.Locale.ROOT)),
+                user.getThemePreference(), effectivePermissions(user));
+    }
+
+    private List<String> effectivePermissions(com.ifti.erp.entity.User user) {
+        if ("ADMIN".equalsIgnoreCase(user.getRole().getName())) return com.ifti.erp.security.PermissionCatalog.ALL.stream().sorted().toList();
+        return user.getRole().getPermissions().stream().sorted().toList();
     }
 }

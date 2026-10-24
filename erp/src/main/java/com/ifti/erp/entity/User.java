@@ -46,6 +46,9 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private java.time.LocalDateTime createdAt;
 
+    @Column(name = "theme_preference", nullable = false, length = 8)
+    private String themePreference = "LIGHT";
+
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     @NotNull(message = "Role is required")
@@ -122,4 +125,7 @@ public class User {
     public void setRole(Role role) {
         this.role = role;
     }
+
+    public String getThemePreference() { return themePreference; }
+    public void setThemePreference(String themePreference) { this.themePreference = themePreference; }
 }

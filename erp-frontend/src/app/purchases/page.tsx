@@ -38,6 +38,7 @@ type PurchaseItem = {
   remainingQuantity: number;
 };
 type PurchasePayment = { status: string; amount: number; purchaseOrder?: { id: number } };
+function localDateTimeValue() { const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 
 export default function PurchasesPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -45,6 +46,8 @@ export default function PurchasesPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [payments, setPayments] = useState<PurchasePayment[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [orderSearch, setOrderSearch] = useState('');
@@ -52,7 +55,7 @@ export default function PurchasesPage() {
 
   // Purchase Order form
   const [supplierId, setSupplierId] = useState('');
-  const [orderDate, setOrderDate] = useState('');
+  const [orderDate, setOrderDate] = useState(localDateTimeValue());
   const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState('PENDING');
   const [notes, setNotes] = useState('');
@@ -175,7 +178,7 @@ export default function PurchasesPage() {
 
   const resetOrderForm = () => {
     setSupplierId('');
-    setOrderDate('');
+    setOrderDate(localDateTimeValue());
     setDueDate('');
     setStatus('PENDING');
     setNotes('');
@@ -184,6 +187,7 @@ export default function PurchasesPage() {
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingOrder) return;
 
     if (!supplierId || !orderDate || !status) {
       alert('Please fill in all required fields.');
@@ -201,6 +205,7 @@ export default function PurchasesPage() {
     };
 
     try {
+      setSavingOrder(true);
       const url = editingOrderId
         ? `${API}/purchase-orders/${editingOrderId}`
         : `${API}/purchase-orders`;
@@ -228,6 +233,8 @@ export default function PurchasesPage() {
     } catch (error) {
       console.error(error);
       alert('Something went wrong.');
+    } finally {
+      setSavingOrder(false);
     }
   };
 
@@ -304,6 +311,7 @@ export default function PurchasesPage() {
 
   const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingItem) return;
 
     if (!purchaseOrderId || !productId || !quantity || !unitCost) {
       alert('Please fill in all required fields.');
@@ -332,6 +340,7 @@ export default function PurchasesPage() {
     };
 
     try {
+      setSavingItem(true);
       const url = editingItemId
         ? `${API}/purchase-items/${editingItemId}`
         : `${API}/purchase-items`;
@@ -361,6 +370,8 @@ export default function PurchasesPage() {
     } catch (error) {
       console.error(error);
       alert('Something went wrong.');
+    } finally {
+      setSavingItem(false);
     }
   };
 
@@ -557,9 +568,10 @@ export default function PurchasesPage() {
           <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
+              disabled={savingOrder}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
-              {editingOrderId === null
+              {savingOrder ? 'Saving…' : editingOrderId === null
                 ? 'Add Purchase Order'
                 : 'Update Purchase Order'}
             </button>
@@ -789,9 +801,10 @@ export default function PurchasesPage() {
           <div className="flex gap-2 pt-1 md:col-span-2">
             <button
               type="submit"
+              disabled={savingItem}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
-              {editingItemId === null
+              {savingItem ? 'Saving…' : editingItemId === null
                 ? 'Add Purchase Item'
                 : 'Update Purchase Item'}
             </button>

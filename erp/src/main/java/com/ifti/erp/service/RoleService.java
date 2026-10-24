@@ -30,6 +30,7 @@ public class RoleService {
         if (roleRepository.findFirstByNameIgnoreCase(role.getName()).isPresent()) {
             throw new IllegalArgumentException("A role with this name already exists");
         }
+        validatePermissions(role);
         Role saved = roleRepository.save(role);
         auditService.record("CREATED", "ROLE", saved.getId(), "name=" + saved.getName());
         return saved;
@@ -48,10 +49,19 @@ public class RoleService {
         }
 
         role.setName(roleDetails.getName());
+        validatePermissions(roleDetails);
+        role.setPermissions(roleDetails.getPermissions());
 
         Role saved = roleRepository.save(role);
         auditService.record("UPDATED", "ROLE", id, "name=" + saved.getName());
         return saved;
+    }
+
+    private void validatePermissions(Role role) {
+        if (role.getPermissions() == null) return;
+        var unknown = new java.util.HashSet<>(role.getPermissions());
+        unknown.removeAll(com.ifti.erp.security.PermissionCatalog.ALL);
+        if (!unknown.isEmpty()) throw new IllegalArgumentException("Unknown role permissions: " + String.join(", ", unknown));
     }
 
     public void deleteRole(Long id) {

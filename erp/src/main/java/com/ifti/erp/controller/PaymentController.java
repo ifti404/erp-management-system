@@ -1,6 +1,4 @@
 package com.ifti.erp.controller;
-import com.ifti.erp.entity.SalesOrder;
-import com.ifti.erp.entity.PurchaseOrder;
 import com.ifti.erp.entity.Payment;
 import com.ifti.erp.service.PaymentService;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +17,11 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
     @GetMapping("/unpaid-purchase-orders")
-    public List<PurchaseOrder> getUnpaidPurchaseOrders() {
+    public List<PaymentService.UnpaidOrder> getUnpaidPurchaseOrders() {
     return paymentService.getUnpaidPurchaseOrders();
     }
     @GetMapping("/unpaid-sales-orders")
-    public List<SalesOrder> getUnpaidSalesOrders() {
+    public List<PaymentService.UnpaidOrder> getUnpaidSalesOrders() {
     return paymentService.getUnpaidSalesOrders();
     }
 

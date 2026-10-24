@@ -92,25 +92,17 @@ export default function Dashboard() {
         apiFetch(`${API}/sales-returns`),
       ]);
 
-      if (
-        !productsResponse.ok ||
-        !inventoryResponse.ok ||
-        !salesResponse.ok ||
-        !purchaseResponse.ok ||
-        !paymentsResponse.ok || !returnsResponse.ok
-      ) {
+      if ([productsResponse, inventoryResponse, salesResponse, purchaseResponse, paymentsResponse, returnsResponse]
+        .some((response) => !response.ok && response.status !== 403)) {
         throw new Error('Failed to load dashboard data');
       }
 
-      const [productsData, inventoryData, salesData, purchaseData, paymentsData, returnsData] =
-        await Promise.all([
-          productsResponse.json() as Promise<Product[]>,
-          inventoryResponse.json() as Promise<Inventory[]>,
-          salesResponse.json() as Promise<SalesOrder[]>,
-          purchaseResponse.json() as Promise<PurchaseOrder[]>,
-          paymentsResponse.json() as Promise<Payment[]>,
-          returnsResponse.json() as Promise<{ salesOrderId: number; returnAmount: number }[]>,
-        ]);
+      const readOrEmpty = <T,>(response: Response): Promise<T[]> => response.status === 403 ? Promise.resolve([]) : response.json() as Promise<T[]>;
+      const [productsData, inventoryData, salesData, purchaseData, paymentsData, returnsData] = await Promise.all([
+        readOrEmpty<Product>(productsResponse), readOrEmpty<Inventory>(inventoryResponse), readOrEmpty<SalesOrder>(salesResponse),
+        readOrEmpty<PurchaseOrder>(purchaseResponse), readOrEmpty<Payment>(paymentsResponse),
+        readOrEmpty<{ salesOrderId: number; returnAmount: number }>(returnsResponse),
+      ]);
 
       return {
         products: productsData,
@@ -211,7 +203,7 @@ export default function Dashboard() {
       )}
 
       {/* PAGE HEADER */}
-      <header className="page-heading"><div><p className="eyebrow">YOUR BUSINESS AT A GLANCE</p><h1>Overview</h1><p>Orders, money due, and stock that needs attention.</p></div><div className="flex flex-wrap gap-2"><Link href="/sales" className="button-primary"><ArrowUpRight className="size-4"/>New sale</Link><Link href="/purchases" className="button-secondary"><ArrowDownLeft className="size-4"/>New purchase</Link></div></header>
+      <header className="page-heading"><div><p className="eyebrow">YOUR BUSINESS AT A GLANCE</p><h1>Overview</h1><p>Orders, money due, and stock that needs attention. Figures reflect the sections your role can view.</p></div><div className="flex flex-wrap gap-2"><Link href="/sales" className="button-primary"><ArrowUpRight className="size-4"/>New sale</Link><Link href="/purchases" className="button-secondary"><ArrowDownLeft className="size-4"/>New purchase</Link></div></header>
 
       {/* SUMMARY CARDS */}
       <div className="dashboard-metrics grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

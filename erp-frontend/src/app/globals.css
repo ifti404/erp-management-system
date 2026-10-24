@@ -121,6 +121,15 @@
 
 :root { --workspace: oklch(0.975 0.012 205); }
 .dark { --workspace: oklch(0.16 0.02 250); }
+html, body, .app-main, .panel, .control, .button-secondary { transition: background-color .22s ease, color .22s ease, border-color .22s ease; }
+input[type="date"], input[type="datetime-local"] { min-height: 2.75rem; padding-inline: .8rem; accent-color: var(--primary); color-scheme: light; }
+.dark input[type="date"], .dark input[type="datetime-local"] { color-scheme: dark; }
+.sidebar-desktop { z-index: 30; transition: width .2s ease, box-shadow .2s ease; overflow-x: hidden; }
+.sidebar-wide { width: 16rem; }
+.sidebar-compact { width: 5rem; }
+.sidebar-compact.sidebar-desktop:hover { width: 16rem; z-index: 40; box-shadow: 12px 0 36px #0003; }
+.sidebar-compact-toggle { position: fixed; z-index: 35; left: 5rem; top: 1.15rem; display: none; border: 1px solid var(--border); border-radius: .7rem; background: var(--card); padding: .55rem; color: var(--muted-foreground); }
+@media (min-width: 768px) { .sidebar-compact-toggle { display: inline-flex; } }
 
 .page-stack { width: 100%; max-width: 1560px; margin-inline: auto; display: grid; gap: 1.4rem; }
 .page-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; }

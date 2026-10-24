@@ -31,10 +31,14 @@ public class ErpUserDetailsService implements UserDetailsService {
         String storedHash = user.getPasswordHash();
         if (storedHash.startsWith("$2")) storedHash = "{bcrypt}" + storedHash;
         String role = "ROLE_" + user.getRole().getName().trim().toUpperCase(Locale.ROOT);
+        var authorities = new java.util.HashSet<String>();
+        authorities.add(role);
+        if ("ADMIN".equalsIgnoreCase(user.getRole().getName())) authorities.addAll(com.ifti.erp.security.PermissionCatalog.ALL);
+        else authorities.addAll(user.getRole().getPermissions());
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
                 .password(storedHash)
-                .authorities(role)
+                .authorities(authorities.toArray(String[]::new))
                 .disabled(!Boolean.TRUE.equals(user.getActive()))
                 .build();
     }

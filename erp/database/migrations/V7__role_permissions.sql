@@ -1,0 +1,29 @@
+CREATE TABLE role_permissions (
+    role_id BIGINT NOT NULL,
+    permission VARCHAR(60) NOT NULL,
+    PRIMARY KEY (role_id, permission),
+    KEY idx_role_permissions_permission (permission),
+    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Preserve the access existing staff currently have. Administrators can narrow
+-- these permissions in the Roles screen after the upgrade. Newly created roles
+-- start with no permissions until an administrator chooses them.
+INSERT INTO role_permissions (role_id, permission)
+SELECT roles.id, permissions.permission
+FROM roles
+CROSS JOIN (
+    SELECT 'PRODUCTS_VIEW' AS permission UNION ALL SELECT 'PRODUCTS_MANAGE' UNION ALL
+    SELECT 'INVENTORY_VIEW' UNION ALL SELECT 'INVENTORY_MANAGE' UNION ALL
+    SELECT 'CATEGORIES_VIEW' UNION ALL SELECT 'CATEGORIES_MANAGE' UNION ALL
+    SELECT 'CUSTOMERS_VIEW' UNION ALL SELECT 'CUSTOMERS_MANAGE' UNION ALL
+    SELECT 'SUPPLIERS_VIEW' UNION ALL SELECT 'SUPPLIERS_MANAGE' UNION ALL
+    SELECT 'SALES_VIEW' UNION ALL SELECT 'SALES_MANAGE' UNION ALL
+    SELECT 'RETURNS_VIEW' UNION ALL SELECT 'RETURNS_MANAGE' UNION ALL
+    SELECT 'PURCHASES_VIEW' UNION ALL SELECT 'PURCHASES_MANAGE' UNION ALL
+    SELECT 'PAYMENTS_VIEW' UNION ALL SELECT 'PAYMENTS_MANAGE' UNION ALL
+    SELECT 'EXPENSES_VIEW' UNION ALL SELECT 'EXPENSES_MANAGE' UNION ALL
+    SELECT 'REPORTS_VIEW' UNION ALL SELECT 'STATEMENTS_VIEW' UNION ALL
+    SELECT 'SETTINGS_VIEW' UNION ALL SELECT 'SETTINGS_MANAGE'
+) AS permissions
+WHERE UPPER(roles.name) <> 'ADMIN';

@@ -2,12 +2,11 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { API_BASE, apiFetch } from '@/lib/api';
-import { AdminPageGuard } from '@/components/admin-page-guard';
 
 type Category = { id: number; name: string; description: string | null };
 
 export default function CategoriesPage() {
-  return <AdminPageGuard><CategoriesManager /></AdminPageGuard>;
+  return <CategoriesManager />;
 }
 
 function CategoriesManager() {
