@@ -45,7 +45,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           '/products': 'PRODUCTS_VIEW', '/inventory': 'INVENTORY_VIEW', '/categories': 'CATEGORIES_VIEW',
           '/customers': 'CUSTOMERS_VIEW', '/suppliers': 'SUPPLIERS_VIEW', '/sales': 'SALES_VIEW',
           '/returns': 'RETURNS_VIEW', '/purchases': 'PURCHASES_VIEW', '/payments': 'PAYMENTS_VIEW',
-          '/expenses': 'EXPENSES_VIEW', '/reports': 'REPORTS_VIEW', '/statements': 'STATEMENTS_VIEW', '/ledger': 'REPORTS_VIEW',
+          '/expenses': 'EXPENSES_VIEW', '/accounts': ['ACCOUNTS_VIEW', 'PAYMENTS_VIEW', 'EXPENSES_VIEW', 'REPORTS_VIEW'], '/reports': 'REPORTS_VIEW', '/statements': 'STATEMENTS_VIEW', '/ledger': 'REPORTS_VIEW',
           '/settings': 'SETTINGS_VIEW', '/audit': 'ROLE_ADMIN', '/users': 'ROLE_ADMIN', '/roles': 'ROLE_ADMIN',
           '/documents': ['SALES_VIEW', 'PURCHASES_VIEW', 'PAYMENTS_VIEW'],
         };

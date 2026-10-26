@@ -12,7 +12,7 @@ const labels: Record<string, string> = {
   '/': 'Overview', '/products': 'Products', '/inventory': 'Inventory', '/categories': 'Categories',
   '/customers': 'Customers', '/suppliers': 'Suppliers', '/sales': 'Sales orders', '/purchases': 'Purchase orders',
   '/payments': 'Payments', '/reports': 'Reports', '/statements': 'Account statements', '/audit': 'Audit history',
-  '/expenses': 'Expenses', '/ledger': 'Transaction ledger',
+  '/expenses': 'Expenses', '/accounts': 'Accounts & balances', '/ledger': 'Transaction ledger',
   '/settings': 'Company details', '/users': 'Staff accounts', '/roles': 'Roles', '/documents': 'Print document',
   '/profile': 'Profile', '/user-settings': 'User settings',
 };

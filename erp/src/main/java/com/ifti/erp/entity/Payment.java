@@ -43,6 +43,10 @@ public class Payment {
     @JoinColumn(name = "purchase_order_id")
     private PurchaseOrder purchaseOrder;
 
+    @ManyToOne
+    @JoinColumn(name = "account_id")
+    private FinancialAccount account;
+
     @Column(length = 255)
     @Size(max = 255, message = "Notes must not exceed 255 characters")
     private String notes;
@@ -101,6 +105,9 @@ public class Payment {
     public void setPurchaseOrder(PurchaseOrder purchaseOrder) {
         this.purchaseOrder = purchaseOrder;
     }
+
+    public FinancialAccount getAccount() { return account; }
+    public void setAccount(FinancialAccount account) { this.account = account; }
 
     public String getNotes() {
         return notes;

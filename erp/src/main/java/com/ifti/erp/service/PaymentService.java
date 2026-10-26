@@ -24,18 +24,20 @@ public class PaymentService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final AuditService auditService;
     private final SalesReturnRepository salesReturnRepository;
+    private final AccountService accountService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             SalesOrderRepository salesOrderRepository,
             PurchaseOrderRepository purchaseOrderRepository, AuditService auditService,
-            SalesReturnRepository salesReturnRepository) {
+            SalesReturnRepository salesReturnRepository, AccountService accountService) {
 
         this.paymentRepository = paymentRepository;
         this.salesOrderRepository = salesOrderRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.auditService = auditService;
         this.salesReturnRepository = salesReturnRepository;
+        this.accountService = accountService;
     }
 
     public List<Payment> getAllPayments() {
@@ -113,7 +115,10 @@ public class PaymentService {
             }
         }
 
-        Payment saved = paymentRepository.save(payment);
+        if ("PAID".equals(payment.getStatus())) payment.setAccount(accountService.requireActive(payment.getAccount() == null ? null : payment.getAccount().getId()));
+        else if (payment.getAccount() != null) payment.setAccount(accountService.requireActive(payment.getAccount().getId()));
+        Payment saved = paymentRepository.saveAndFlush(payment);
+        accountService.recordPayment(saved, currentActor());
         auditService.record("CREATED", "PAYMENT", saved.getId(), paymentDescription(saved));
         return saved;
     }
@@ -217,8 +222,12 @@ public class PaymentService {
     payment.setSalesOrder(paymentDetails.getSalesOrder());
     payment.setPurchaseOrder(paymentDetails.getPurchaseOrder());
     payment.setNotes(paymentDetails.getNotes());
+    if (paymentDetails.getAccount() != null) payment.setAccount(accountService.requireActive(paymentDetails.getAccount().getId()));
+    else if ("PAID".equals(paymentDetails.getStatus())) throw new IllegalArgumentException("Choose the account used for this payment");
+    else payment.setAccount(null);
 
-    Payment saved = paymentRepository.save(payment);
+    Payment saved = paymentRepository.saveAndFlush(payment);
+    accountService.recordPayment(saved, currentActor());
     auditService.record("UPDATED", "PAYMENT", id, previous + " -> " + paymentDescription(saved));
     return saved;
 }
@@ -267,6 +276,7 @@ public List<UnpaidOrder> getUnpaidPurchaseOrders() {
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new RuntimeException("Payment not found"));
         protectReturnRefund(payment);
         auditService.record("DELETED", "PAYMENT", id, paymentDescription(payment));
+        accountService.removeLinkedEntry("PAYMENT", id);
         paymentRepository.deleteById(id);
     }
 
@@ -288,5 +298,9 @@ public List<UnpaidOrder> getUnpaidPurchaseOrders() {
         String order = payment.getSalesOrder() != null ? "sales order #" + payment.getSalesOrder().getId()
                 : payment.getPurchaseOrder() != null ? "purchase order #" + payment.getPurchaseOrder().getId() : "unlinked";
         return order + ", amount=" + payment.getAmount() + ", status=" + payment.getStatus() + ", method=" + payment.getPaymentMethod();
+    }
+    private String currentActor() {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return authentication == null || !authentication.isAuthenticated() ? "SYSTEM" : authentication.getName();
     }
 }

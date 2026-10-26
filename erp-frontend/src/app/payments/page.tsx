@@ -35,12 +35,15 @@ type Payment = {
   salesOrder?: SalesOrder;
   purchaseOrder?: PurchaseOrder;
   notes?: string;
+  account?: { id: number; name: string };
 };
+type Account = { id: number; name: string; currencyCode: string; balance: number; active: boolean };
 
 type PaymentsPageData = {
   payments: Payment[];
   salesOrders: SalesOrder[];
   purchaseOrders: PurchaseOrder[];
+  accounts: Account[];
 };
 
 export default function PaymentsPage() {
@@ -48,6 +51,7 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   const [paymentDate, setPaymentDate] = useState(localDateTimeValue());
   const [amount, setAmount] = useState('');
@@ -56,32 +60,36 @@ export default function PaymentsPage() {
   const [orderType, setOrderType] = useState('SALES');
   const [orderId, setOrderId] = useState('');
   const [notes, setNotes] = useState('');
+  const [accountId, setAccountId] = useState('');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   const fetchData = async (): Promise<PaymentsPageData> => {
-    const [paymentsResponse, salesOrdersResponse, purchaseOrdersResponse] =
+    const [paymentsResponse, salesOrdersResponse, purchaseOrdersResponse, accountsResponse] =
       await Promise.all([
         apiFetch(`${API}/payments`),
         apiFetch(`${API}/payments/unpaid-sales-orders`),
         apiFetch(`${API}/payments/unpaid-purchase-orders`),
+        apiFetch(`${API}/accounts`),
       ]);
 
-    if (!paymentsResponse.ok || !salesOrdersResponse.ok || !purchaseOrdersResponse.ok) {
+    if (!paymentsResponse.ok || !salesOrdersResponse.ok || !purchaseOrdersResponse.ok || !accountsResponse.ok) {
       throw new Error('Could not load payments. Check that the backend is running.');
     }
 
-    const [paymentsData, salesOrdersData, purchaseOrdersData] =
+    const [paymentsData, salesOrdersData, purchaseOrdersData, accountsData] =
       await Promise.all([
         paymentsResponse.json() as Promise<Payment[]>,
         salesOrdersResponse.json() as Promise<SalesOrder[]>,
         purchaseOrdersResponse.json() as Promise<PurchaseOrder[]>,
+        accountsResponse.json() as Promise<Account[]>,
       ]);
     return {
       payments: paymentsData,
       salesOrders: salesOrdersData,
       purchaseOrders: purchaseOrdersData,
+      accounts: accountsData,
     };
   };
 
@@ -104,6 +112,7 @@ export default function PaymentsPage() {
         setPayments(data.payments);
         setSalesOrders(data.salesOrders);
         setPurchaseOrders(data.purchaseOrders);
+        setAccounts(data.accounts);
       }
     }).catch((error: unknown) => {
       console.error(error);
@@ -116,6 +125,7 @@ export default function PaymentsPage() {
     setPayments(data.payments);
     setSalesOrders(data.salesOrders);
     setPurchaseOrders(data.purchaseOrders);
+    setAccounts(data.accounts);
   };
 
   const resetForm = () => {
@@ -126,6 +136,7 @@ export default function PaymentsPage() {
     setOrderType('SALES');
     setOrderId('');
     setNotes('');
+    setAccountId('');
     setEditingId(null);
   };
 
@@ -152,6 +163,7 @@ export default function PaymentsPage() {
             }
           : null,
       notes,
+      account: accountId ? { id: Number(accountId) } : null,
     };
 
     const url = editingId ? `${API}/payments/${editingId}` : `${API}/payments`;
@@ -204,6 +216,7 @@ export default function PaymentsPage() {
     }
 
     setNotes(payment.notes || '');
+    setAccountId(payment.account ? String(payment.account.id) : '');
   };
 
   const selectedOrder = (orderType === 'SALES' ? salesOrders : purchaseOrders).find((order) => String(order.id) === orderId);
@@ -326,6 +339,8 @@ export default function PaymentsPage() {
             </select>
           </div>
 
+          {status === 'PAID' && <label className="md:col-span-2"><span className="mb-1.5 block text-sm font-medium">Account receiving or paying this amount</span><select value={accountId} onChange={(e) => setAccountId(e.target.value)} required className={inputClass}><option value="">Choose account</option>{accounts.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.currencyCode} · balance {Number(item.balance).toFixed(2)}</option>)}</select></label>}
+
           <div>
             <label className="mb-1.5 block text-sm font-medium">
               Order Type
@@ -424,6 +439,7 @@ export default function PaymentsPage() {
                 <th className="px-4 py-3 text-left font-medium">Method</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-left font-medium">Order</th>
+                <th className="px-4 py-3 text-left font-medium">Account</th>
                 <th className="px-4 py-3 text-left font-medium">Notes</th>
                 <th className="px-4 py-3 text-left font-medium">Actions</th>
               </tr>
@@ -465,6 +481,8 @@ export default function PaymentsPage() {
                         : '-'}
                   </td>
 
+                  <td className="px-4 py-3">{payment.account?.name || '—'}</td>
+
                   <td className="max-w-xs truncate px-4 py-3">
                     {payment.notes || '-'}
                   </td>
@@ -495,7 +513,7 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ))}
-              {filteredPayments.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">{payments.length === 0 ? 'No payment records yet.' : `No payments match “${searchTerm}”.`}</td></tr>}
+              {filteredPayments.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">{payments.length === 0 ? 'No payment records yet.' : `No payments match “${searchTerm}”.`}</td></tr>}
 
             </tbody>
           </table>

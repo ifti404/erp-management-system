@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { API_BASE, apiFetch } from '@/lib/api';
-import { Activity, Boxes, BookOpen, ChevronDown, ClipboardList, CreditCard, LayoutDashboard, Package, Settings2, ShieldCheck, Tags, Truck, Users, Wallet, Receipt } from 'lucide-react';
+import { Activity, Boxes, BookOpen, ChevronDown, ClipboardList, CreditCard, LayoutDashboard, Package, Settings2, ShieldCheck, Tags, Truck, Users, Wallet, Receipt, Landmark } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const navigation: { name: string; href: string; icon: LucideIcon; group: string; admin?: boolean; permission?: string }[] = [
@@ -19,6 +19,7 @@ const navigation: { name: string; href: string; icon: LucideIcon; group: string;
   { name: 'Purchase orders', href: '/purchases', icon: ClipboardList, group: 'OPERATIONS', permission: 'PURCHASES_VIEW' },
   { name: 'Payments', href: '/payments', icon: CreditCard, group: 'OPERATIONS', permission: 'PAYMENTS_VIEW' },
   { name: 'Expenses', href: '/expenses', icon: Receipt, group: 'FINANCE', permission: 'EXPENSES_VIEW' },
+  { name: 'Accounts & balances', href: '/accounts', icon: Landmark, group: 'FINANCE', permission: 'ACCOUNTS_VIEW' },
   { name: 'Reports', href: '/reports', icon: Activity, group: 'FINANCE', permission: 'REPORTS_VIEW' },
   { name: 'Statements', href: '/statements', icon: Wallet, group: 'FINANCE', permission: 'STATEMENTS_VIEW' },
   { name: 'Ledger', href: '/ledger', icon: BookOpen, group: 'FINANCE', permission: 'REPORTS_VIEW' },

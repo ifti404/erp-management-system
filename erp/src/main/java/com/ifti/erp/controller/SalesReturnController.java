@@ -25,8 +25,10 @@ public class SalesReturnController {
         return service.create(request);
     }
 
+    public record SettlementRequest(Long accountId) {}
+
     @PatchMapping("/{id}/settlement")
-    public SalesReturnResponse completeSettlement(@PathVariable Long id) {
-        return service.completeSettlement(id);
+    public SalesReturnResponse completeSettlement(@PathVariable Long id, @RequestBody SettlementRequest request) {
+        return service.completeSettlement(id, request == null ? null : request.accountId());
     }
 }

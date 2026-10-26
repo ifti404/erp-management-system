@@ -57,6 +57,7 @@ type Payment = {
     id: number;
   };
 };
+type FinancialAccount = { id: number; name: string; currencyCode: string; balance: number; active: boolean };
 
 type DashboardData = {
   products: Product[];
@@ -65,6 +66,7 @@ type DashboardData = {
   purchaseOrders: PurchaseOrder[];
   payments: Payment[];
   returns: { salesOrderId: number; returnAmount: number }[];
+  accounts: FinancialAccount[];
 };
 
 export default function Dashboard() {
@@ -76,6 +78,7 @@ export default function Dashboard() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [returns, setReturns] = useState<{ salesOrderId: number; returnAmount: number }[]>([]);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
 
   async function loadDashboard(): Promise<DashboardData> {
       const [
@@ -85,6 +88,7 @@ export default function Dashboard() {
         purchaseResponse,
         paymentsResponse,
         returnsResponse,
+        accountsResponse,
       ] = await Promise.all([
         apiFetch(`${API}/products`),
         apiFetch(`${API}/inventory`),
@@ -92,18 +96,20 @@ export default function Dashboard() {
         apiFetch(`${API}/purchase-orders`),
         apiFetch(`${API}/payments`),
         apiFetch(`${API}/sales-returns`),
+        apiFetch(`${API}/accounts`),
       ]);
 
-      if ([productsResponse, inventoryResponse, salesResponse, purchaseResponse, paymentsResponse, returnsResponse]
+      if ([productsResponse, inventoryResponse, salesResponse, purchaseResponse, paymentsResponse, returnsResponse, accountsResponse]
         .some((response) => !response.ok && response.status !== 403)) {
         throw new Error('Failed to load dashboard data');
       }
 
       const readOrEmpty = <T,>(response: Response): Promise<T[]> => response.status === 403 ? Promise.resolve([]) : response.json() as Promise<T[]>;
-      const [productsData, inventoryData, salesData, purchaseData, paymentsData, returnsData] = await Promise.all([
+      const [productsData, inventoryData, salesData, purchaseData, paymentsData, returnsData, accountsData] = await Promise.all([
         readOrEmpty<Product>(productsResponse), readOrEmpty<Inventory>(inventoryResponse), readOrEmpty<SalesOrder>(salesResponse),
         readOrEmpty<PurchaseOrder>(purchaseResponse), readOrEmpty<Payment>(paymentsResponse),
         readOrEmpty<{ salesOrderId: number; returnAmount: number }>(returnsResponse),
+        readOrEmpty<FinancialAccount>(accountsResponse),
       ]);
 
       return {
@@ -113,6 +119,7 @@ export default function Dashboard() {
         purchaseOrders: purchaseData,
         payments: paymentsData,
         returns: returnsData,
+        accounts: accountsData,
       };
   }
 
@@ -126,6 +133,7 @@ export default function Dashboard() {
         setPurchaseOrders(data.purchaseOrders);
         setPayments(data.payments);
         setReturns(data.returns);
+        setAccounts(data.accounts);
       }
     }).catch((error: unknown) => {
       console.error('Dashboard error:', error);
@@ -230,6 +238,8 @@ export default function Dashboard() {
         <div className="panel dashboard-metric p-5"><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Overdue balances</p><span className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700"><AlertTriangle className="size-4"/></span></div><p className="mt-3 text-2xl font-semibold">{loading ? '—' : overdueCount}</p><Link href="/statements" className="mt-1 inline-block text-xs font-medium text-primary hover:underline">Review statements</Link>
         </div>
       </div>
+
+      {accounts.length > 0 && <section className="panel p-5"><div className="mb-4 flex items-center justify-between"><div><p className="eyebrow">CASH POSITION</p><h2 className="text-lg font-semibold">Account balances</h2></div><Link href="/accounts" className="text-sm font-medium text-primary hover:underline">View ledger →</Link></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{accounts.filter((account) => account.active).map((account) => <article key={account.id} className="rounded-xl border bg-background p-4"><p className="text-sm text-muted-foreground">{account.name}</p><p className="mt-1 text-xl font-semibold">{account.currencyCode} {Number(account.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></article>)}</div></section>}
 
       {overdueCount > 0 && <Link href="/statements" className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><AlertTriangle className="size-5 shrink-0 text-amber-600"/><span><strong>{overdueCount} overdue account{overdueCount === 1 ? '' : 's'} need follow-up.</strong> Open statements to review balances.</span><span className="ml-auto font-semibold">Review →</span></Link>}
 

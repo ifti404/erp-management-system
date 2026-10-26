@@ -8,6 +8,7 @@ type SalesItem = { id: number; salesOrder: { id: number }; product: { name: stri
 type ReturnItem = { salesItemId: number; productName: string; sku: string; quantity: number; restock: boolean; unitPrice: number; lineTotal: number };
 type SalesReturn = { id: number; salesOrderId: number; customerName: string; reason: string; settlementType: 'REFUND' | 'BALANCE_ADJUSTMENT' | 'STORE_CREDIT'; settlementStatus: string; returnAmount: number; refundAmount: number; createdAt: string; createdBy: string; items: ReturnItem[] };
 type Inventory = { quantity: number; product: { name: string; sku: string; reorderLevel: number } };
+type FinancialAccount = { id: number; name: string; currencyCode: string; active: boolean };
 
 const money = (amount: number) => `৳${Number(amount).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 async function errorMessage(response: Response, fallback: string) {
@@ -20,6 +21,8 @@ export default function ReturnsPage() {
   const [items, setItems] = useState<SalesItem[]>([]);
   const [returns, setReturns] = useState<SalesReturn[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
+  const [refundAccounts, setRefundAccounts] = useState<Record<number, string>>({});
   const [orderId, setOrderId] = useState('');
   const [reason, setReason] = useState('');
   const [quantities, setQuantities] = useState<Record<number, string>>({});
@@ -31,10 +34,10 @@ export default function ReturnsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const responses = await Promise.all(['sales-orders', 'sales-items', 'sales-returns', 'inventory'].map((path) => apiFetch(`${API_BASE}/${path}`)));
+      const responses = await Promise.all(['sales-orders', 'sales-items', 'sales-returns', 'inventory', 'accounts'].map((path) => apiFetch(`${API_BASE}/${path}`)));
       if (responses.some((response) => !response.ok)) throw new Error('Could not load return records. Check the backend and try again.');
-      const [orderData, itemData, returnData, inventoryData] = await Promise.all(responses.map((response) => response.json()));
-      setOrders(orderData as Order[]); setItems(itemData as SalesItem[]); setReturns(returnData as SalesReturn[]); setInventory(inventoryData as Inventory[]);
+      const [orderData, itemData, returnData, inventoryData, accountData] = await Promise.all(responses.map((response) => response.json()));
+      setOrders(orderData as Order[]); setItems(itemData as SalesItem[]); setReturns(returnData as SalesReturn[]); setInventory(inventoryData as Inventory[]); setAccounts(accountData as FinancialAccount[]);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not load return records.'); }
     finally { setLoading(false); }
   }, []);
@@ -66,11 +69,13 @@ export default function ReturnsPage() {
   }
 
   async function settle(entry: SalesReturn) {
+    const accountId = refundAccounts[entry.id];
+    if (!accountId) { setError('Choose which account will pay this refund.'); return; }
     const action = 'confirm that the refund was paid';
     if (!window.confirm(`Please ${action} for ${money(Number(entry.refundAmount))}?`)) return;
     setError(''); setMessage('');
     try {
-      const response = await apiFetch(`${API_BASE}/sales-returns/${entry.id}/settlement`, { method: 'PATCH' });
+      const response = await apiFetch(`${API_BASE}/sales-returns/${entry.id}/settlement`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId: Number(accountId) }) });
       if (!response.ok) throw new Error(await errorMessage(response, 'Could not update settlement status.'));
       setMessage('Return settlement marked complete.'); await loadData();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update settlement status.'); }
@@ -93,7 +98,7 @@ export default function ReturnsPage() {
       </form>}
     </section>
     <section className="panel overflow-hidden"><div className="panel-heading"><div><h2>Return history</h2><p>Returned value reduces the balance; cash refunds are tracked separately.</p></div><span className="count-pill">{returns.length} records</span></div>
-      {loading ? <p className="p-5 text-sm text-muted-foreground">Loading returns…</p> : returns.length === 0 ? <p className="empty-state">No returns recorded yet.</p> : <div className="overflow-x-auto"><table className="data-table min-w-[900px]"><thead><tr><th>Return</th><th>Order / customer</th><th>Items</th><th>Reason</th><th>Returned value</th><th>Cash refund</th><th>Status</th><th>Recorded</th><th>Action</th></tr></thead><tbody>{returns.map((entry) => <tr key={entry.id}><td>RET-{entry.id}</td><td>#{entry.salesOrderId}<div className="text-xs text-muted-foreground">{entry.customerName}</div></td><td>{entry.items.map((item) => `${item.quantity} × ${item.productName}${item.restock ? ' (restocked)' : ''}`).join(', ')}</td><td>{entry.reason}</td><td className="font-semibold">{money(Number(entry.returnAmount))}</td><td>{money(Number(entry.refundAmount))}</td><td>{entry.settlementType === 'BALANCE_ADJUSTMENT' ? 'Balance reduced' : entry.settlementType === 'STORE_CREDIT' ? 'Legacy credit · not redeemable' : entry.settlementStatus}</td><td>{new Date(entry.createdAt).toLocaleDateString()}</td><td>{entry.settlementType === 'REFUND' && entry.settlementStatus === 'PENDING' ? <button type="button" onClick={() => void settle(entry)} className="button-secondary">Mark refund paid</button> : '—'}</td></tr>)}</tbody></table></div>}
+      {loading ? <p className="p-5 text-sm text-muted-foreground">Loading returns…</p> : returns.length === 0 ? <p className="empty-state">No returns recorded yet.</p> : <div className="overflow-x-auto"><table className="data-table min-w-[1050px]"><thead><tr><th>Return</th><th>Order / customer</th><th>Items</th><th>Reason</th><th>Returned value</th><th>Cash refund</th><th>Status</th><th>Recorded</th><th>Refund account</th><th>Action</th></tr></thead><tbody>{returns.map((entry) => <tr key={entry.id}><td>RET-{entry.id}</td><td>#{entry.salesOrderId}<div className="text-xs text-muted-foreground">{entry.customerName}</div></td><td>{entry.items.map((item) => `${item.quantity} × ${item.productName}${item.restock ? ' (restocked)' : ''}`).join(', ')}</td><td>{entry.reason}</td><td className="font-semibold">{money(Number(entry.returnAmount))}</td><td>{money(Number(entry.refundAmount))}</td><td>{entry.settlementType === 'BALANCE_ADJUSTMENT' ? 'Balance reduced' : entry.settlementType === 'STORE_CREDIT' ? 'Legacy credit · not redeemable' : entry.settlementStatus}</td><td>{new Date(entry.createdAt).toLocaleDateString()}</td><td>{entry.settlementType === 'REFUND' && entry.settlementStatus === 'PENDING' ? <select aria-label={`Refund account for return ${entry.id}`} className="control min-w-40" value={refundAccounts[entry.id] ?? ''} onChange={(event) => setRefundAccounts((current) => ({ ...current, [entry.id]: event.target.value }))}><option value="">Choose account</option>{accounts.filter((account) => account.active).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currencyCode}</option>)}</select> : '—'}</td><td>{entry.settlementType === 'REFUND' && entry.settlementStatus === 'PENDING' ? <button type="button" disabled={!refundAccounts[entry.id]} onClick={() => void settle(entry)} className="button-secondary">Mark refund paid</button> : '—'}</td></tr>)}</tbody></table></div>}
     </section>
   </div>;
 }

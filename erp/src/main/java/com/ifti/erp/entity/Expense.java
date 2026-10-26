@@ -14,6 +14,7 @@ public class Expense {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "transaction_id", unique = true, length = 40) private String transactionId;
     @NotNull @ManyToOne(optional = false) @JoinColumn(name = "category_id", nullable = false) private ExpenseCategory category;
+    @NotNull @ManyToOne(optional = false) @JoinColumn(name = "account_id", nullable = false) private FinancialAccount account;
     @NotNull @DecimalMin("0.01") @Column(nullable = false, precision = 12, scale = 2) private BigDecimal amount;
     @NotNull @Column(name = "expense_date", nullable = false) private LocalDate expenseDate;
     @Column(name = "payment_method", nullable = false, length = 20) private String paymentMethod = "CASH";
@@ -27,6 +28,8 @@ public class Expense {
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public ExpenseCategory getCategory() { return category; }
     public void setCategory(ExpenseCategory category) { this.category = category; }
+    public FinancialAccount getAccount() { return account; }
+    public void setAccount(FinancialAccount account) { this.account = account; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public LocalDate getExpenseDate() { return expenseDate; }

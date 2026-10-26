@@ -274,6 +274,22 @@ Before deploying custom transaction references and the ledger, run
 `erp/database/migrations/V9__transaction_ids.sql` once after V8. It adds unique
 transaction IDs to sales orders, purchase orders, and expenses, backfills
 existing records, and lets blank IDs auto-generate on new records.
+
+### Financial accounts and balances
+
+Before deploying account balances, transfer tracking, and the account ledger,
+back up `erp_db` and run
+`erp/database/migrations/V10__financial_accounts_and_ledger.sql` once after V9.
+It creates a Main account, links existing paid payments and expenses to it, and
+copies those historic cash movements into the account ledger. Do not run V10 a
+second time. Orders only affect receivables/payables; a balance changes when a
+payment, refund, expense, transfer, or other cash entry is recorded. Grant the
+`ACCOUNTS_VIEW` and `ACCOUNTS_MANAGE` permissions under Roles to staff who need
+to review or manage accounts. Transfers require two accounts with the same
+currency. Existing ledger history cannot determine cash that was never recorded,
+so compare the Main account with the real balance and record any difference as
+an opening amount or other-income/other-expense adjustment. The fresh-install
+schema in `erp/database/showcase-schema.sql` includes these tables.
 Use the supplied local browser at `http://localhost:3000` for development.
 
 ### Sign-in
@@ -392,7 +408,7 @@ installed; earlier activity is not reconstructed. Stock history is limited to
 the latest 200 movements and audit history to the latest 500 matches. Return
 accounting reduces customer balances and records cash refunds, but it does not
 create redeemable store credit. Company currency
-is a display label and does not convert amounts. Accounting journals, tax
-calculations, multiple warehouses, fine-grained permissions within non-admin
-roles, and statutory financial statements are not included. Reports and
-statements are operational views, not accounting records.
+is a display label and does not convert amounts. Double-entry journals, tax
+calculations, multiple warehouses, and statutory financial statements are not
+included. Account balances and the cash ledger provide operational cash tracking,
+not a full general ledger.

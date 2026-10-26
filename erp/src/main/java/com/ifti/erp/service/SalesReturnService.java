@@ -33,12 +33,13 @@ public class SalesReturnService {
     private final InventoryMovementService movementService;
     private final AuditService auditService;
     private final PaymentRepository paymentRepository;
+    private final AccountService accountService;
 
     public SalesReturnService(SalesReturnRepository returnRepository,
             SalesReturnItemRepository returnItemRepository, SalesOrderRepository orderRepository,
             SalesItemRepository itemRepository, InventoryRepository inventoryRepository,
             InventoryMovementService movementService, AuditService auditService,
-            PaymentRepository paymentRepository) {
+            PaymentRepository paymentRepository, AccountService accountService) {
         this.returnRepository = returnRepository;
         this.returnItemRepository = returnItemRepository;
         this.orderRepository = orderRepository;
@@ -47,6 +48,7 @@ public class SalesReturnService {
         this.movementService = movementService;
         this.auditService = auditService;
         this.paymentRepository = paymentRepository;
+        this.accountService = accountService;
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +122,7 @@ public class SalesReturnService {
     }
 
     @Transactional
-    public SalesReturnResponse completeSettlement(Long id) {
+    public SalesReturnResponse completeSettlement(Long id, Long accountId) {
         SalesReturn salesReturn = returnRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("Sales return not found"));
         if (!"PENDING".equals(salesReturn.getSettlementStatus()) || !"REFUND".equals(salesReturn.getSettlementType())) {
@@ -136,8 +138,10 @@ public class SalesReturnService {
             payment.setPaymentMethod("REFUND");
             payment.setStatus("REFUNDED");
             payment.setSalesOrder(saved.getSalesOrder());
+            payment.setAccount(accountService.requireActive(accountId));
             payment.setNotes("Refund for sales return #" + id);
-            paymentRepository.save(payment);
+            payment = paymentRepository.saveAndFlush(payment);
+            accountService.recordPayment(payment, currentActor());
         }
         auditService.record("SETTLED", "SALES_RETURN", id, "status=" + status + ", amount=" + saved.getRefundAmount());
         return SalesReturnResponse.from(saved);
