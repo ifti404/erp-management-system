@@ -25,11 +25,12 @@ class PaymentServiceTest {
     @Mock private SalesOrder order;
     @Mock private AuditService auditService;
     @Mock private SalesReturnRepository salesReturnRepository;
+    @Mock private AccountService accountService;
 
     @Test
     void paidPaymentCannotExceedOrderBalance() {
         PaymentService service = new PaymentService(paymentRepository,
-                salesOrderRepository, purchaseOrderRepository, auditService, salesReturnRepository);
+                salesOrderRepository, purchaseOrderRepository, auditService, salesReturnRepository, accountService);
         when(order.getId()).thenReturn(5L);
         when(order.getTotalAmount()).thenReturn(new BigDecimal("100.00"));
         when(salesReturnRepository.totalReturnedValue(5L)).thenReturn(BigDecimal.ZERO);
@@ -50,7 +51,7 @@ class PaymentServiceTest {
     @Test
     void paidPaymentCannotExceedBalanceAfterReturnedItems() {
         PaymentService service = new PaymentService(paymentRepository,
-                salesOrderRepository, purchaseOrderRepository, auditService, salesReturnRepository);
+                salesOrderRepository, purchaseOrderRepository, auditService, salesReturnRepository, accountService);
         when(order.getId()).thenReturn(5L);
         when(order.getTotalAmount()).thenReturn(new BigDecimal("100.00"));
         when(salesOrderRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(order));

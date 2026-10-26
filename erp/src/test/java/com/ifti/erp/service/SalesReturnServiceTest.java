@@ -34,6 +34,7 @@ class SalesReturnServiceTest {
     @Mock private InventoryMovementService movementService;
     @Mock private AuditService auditService;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private AccountService accountService;
     @Mock private SalesOrder order;
     @Mock private SalesItem item;
     @Mock private Product product;
@@ -44,7 +45,7 @@ class SalesReturnServiceTest {
     @BeforeEach
     void setUp() {
         service = new SalesReturnService(returnRepository, returnItemRepository, orderRepository,
-                itemRepository, inventoryRepository, movementService, auditService, paymentRepository);
+                itemRepository, inventoryRepository, movementService, auditService, paymentRepository, accountService);
         when(orderRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(order));
         when(order.getId()).thenReturn(5L);
         when(order.getStatus()).thenReturn("DELIVERED");
